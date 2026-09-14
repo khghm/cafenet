@@ -105,7 +105,7 @@ export default function AdminPanel() {
         {activeSection === 'support' && <SupportView tickets={ticketsList} setTickets={setTicketsList} showToast={showToast} />}
         {activeSection === 'analytics' && <AnalyticsView orders={ordersList} />}
         {activeSection === 'settings' && <SettingsView showToast={showToast} />}
-        {activeSection === 'training' && <TrainingView />}
+        {activeSection === 'training' && <TrainingView services={servicesList} />}
       </div>
     </div>
   );
@@ -999,14 +999,284 @@ function SettingsView({ showToast }: { showToast: (m: string, t?: any) => void }
   );
 }
 
+/* ============ SERVICE TRAINING HELPERS ============ */
+function getServiceSteps(serviceId: string): { title: string; desc: string }[] {
+  const steps: Record<string, { title: string; desc: string }[]> = {
+    s1: [
+      { title: 'دریافت اطلاعات کاربر', desc: 'نام کامل، کد ملی و نوع آزمون (سراسری، ارشد، دکتری) را از کاربر دریافت کنید' },
+      { title: 'بررسی مدارک', desc: 'عکس پرسنلی ۳×۴ جدید و تصویر کارت ملی را بررسی کنید. عکس باید بدون روتوش و با زمینه سفید باشد' },
+      { title: 'ورود به سایت سنجش', desc: 'به سایت sanjesh.org مراجعه و روی لینک ثبت‌نام آزمون مورد نظر کلیک کنید' },
+      { title: 'تکمیل فرم ثبت‌نام', desc: 'اطلاعات فردی، تحصیلی و محل آزمون را در فرم آنلاین وارد کنید' },
+      { title: 'آپلود مدارک', desc: 'عکس پرسنلی و اسکن کارت ملی را با فرمت و حجم مشخص آپلود کنید' },
+      { title: 'پرداخت هزینه', desc: 'هزینه ثبت‌نام را از طریق درگاه بانکی پرداخت کنید' },
+      { title: 'دریافت کد پیگیری', desc: 'کد پیگیری ۱۲ رقمی را یادداشت و به کاربر ارائه دهید' },
+    ],
+    s2: [
+      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی و نوع درخواست (معافیت تحصیلی، تعیین وضعیت، کفالت) را دریافت کنید' },
+      { title: 'ورود به سامانه وظیفه', desc: 'به سایت vazifeh.police.ir مراجعه و وارد بخش خدمات شوید' },
+      { title: 'احراز هویت', desc: 'با کد ملی و شماره موبایل وارد سامانه شوید' },
+      { title: 'ثبت درخواست', desc: 'نوع درخواست را انتخاب و اطلاعات لازم را وارد کنید' },
+      { title: 'آپلود مدارک', desc: 'مدارک مربوطه (گواهی اشتغال به تحصیل، سند کفالت و...) را آپلود کنید' },
+      { title: 'دریافت رسید', desc: 'رسید درخواست را چاپ و به کاربر ارائه دهید' },
+    ],
+    s3: [
+      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی و گروه آزمایشی را دریافت کنید' },
+      { title: 'بررسی عکس', desc: 'عکس پرسنلی استاندارد را بررسی کنید' },
+      { title: 'ورود به سایت سنجش', desc: 'به بخش ثبت‌نام کنکور در sanjesh.org مراجعه کنید' },
+      { title: 'تکمیل فرم', desc: 'اطلاعات فردی و تحصیلی را وارد و گروه آزمایشی را انتخاب کنید' },
+      { title: 'پرداخت', desc: 'هزینه ثبت‌نام را پرداخت کنید' },
+      { title: 'دریافت کد', desc: 'کد پیگیری را به کاربر ارائه دهید' },
+    ],
+    s4: [
+      { title: 'دریافت مدارک', desc: 'تصویر پشت و رو کارت ملی، شناسنامه و شماره موبایل به نام متقاضی' },
+      { title: 'ورود به سامانه ثنا', desc: 'به سایت adliran.ir مراجعه و روی ثبت‌نام ثنا کلیک کنید' },
+      { title: 'وارد کردن اطلاعات هویتی', desc: 'نام، کد ملی، تاریخ تولد و شماره شناسنامه را وارد کنید' },
+      { title: 'آپلود مدارک', desc: 'تصویر واضح کارت ملی و شناسنامه را آپلود کنید' },
+      { title: 'تأیید شماره موبایل', desc: 'کد تأیید ارسال شده به موبایل را وارد کنید' },
+      { title: 'تأیید نهایی', desc: 'اطلاعات را بازبینی و تأیید نهایی کنید' },
+      { title: 'دریافت رمز شخصی', desc: 'رمز شخصی ثنا را یادداشت و به کاربر ارائه دهید' },
+    ],
+    s5: [
+      { title: 'دریافت فایل', desc: 'فایل دیجیتال (PDF، Word، تصویر) را از کاربر دریافت کنید' },
+      { title: 'بررسی کیفیت', desc: 'فایل را از نظر وضوح، اندازه و کیفیت بررسی کنید' },
+      { title: 'تنظیمات چاپ', desc: 'نوع چاپ (رنگی/سیاه‌وسفید)، اندازه (A4/A3) و تعداد نسخه را تنظیم کنید' },
+      { title: 'پیش‌نمایش', desc: 'پیش‌نمایش چاپ را بررسی کنید' },
+      { title: 'چاپ سند', desc: 'دستور چاپ را صادر کنید' },
+      { title: 'کنترل کیفیت', desc: 'خروجی چاپ شده را بررسی کنید' },
+      { title: 'تحویل به کاربر', desc: 'سند چاپ شده را به کاربر تحویل دهید' },
+    ],
+    s6: [
+      { title: 'دریافت سند', desc: 'سند اصلی را به صورت فایل یا فیزیکی دریافت کنید' },
+      { title: 'تعیین زبان‌ها', desc: 'زبان مبدأ و مقصد را مشخص کنید' },
+      { title: 'بررسی محتوا', desc: 'محتوای سند را بررسی و تعداد کلمات را مشخص کنید' },
+      { title: 'تعیین هزینه', desc: 'بر اساس تعداد کلمات و نوع ترجمه، هزینه را محاسبه کنید' },
+      { title: 'ارجاع به مترجم', desc: 'سند را به مترجم رسمی متخصص در آن حوزه ارجاع دهید' },
+      { title: 'انجام ترجمه', desc: 'مترجم ترجمه را انجام می‌دهد' },
+      { title: 'بازبینی', desc: 'ترجمه توسط بازبین کنترل کیفیت می‌شود' },
+      { title: 'مهر و امضا', desc: 'ترجمه در دفتر ترجمه رسمی مهر و امضا می‌شود' },
+      { title: 'تحویل نهایی', desc: 'ترجمه رسمی را به همراه فیش هزینه به کاربر تحویل دهید' },
+    ],
+    s7: [
+      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی/شناسه ملی و نوع خدمت مالیاتی را دریافت کنید' },
+      { title: 'ورود به سامانه مالیاتی', desc: 'به سایت tax.gov.ir مراجعه و وارد شوید' },
+      { title: 'ثبت/پیگیری', desc: 'بسته به نوع درخواست، پرونده تشکیل یا پیگیری کنید' },
+      { title: 'آپلود مدارک', desc: 'اسناد مالی و مدارک مربوطه را آپلود کنید' },
+      { title: 'ارسال اظهارنامه', desc: 'اظهارنامه را نهایی و ارسال کنید' },
+      { title: 'دریافت رسید', desc: 'رسید الکترونیکی را دریافت و به کاربر ارائه دهید' },
+    ],
+    s8: [
+      { title: 'دریافت اطلاعات خودرو', desc: 'شماره پلاک، مدل و سال ساخت خودرو را دریافت کنید' },
+      { title: 'بررسی بیمه‌نامه قبلی', desc: 'در صورت وجود، بیمه‌نامه قبلی را بررسی کنید' },
+      { title: 'محاسبه حق بیمه', desc: 'بر اساس نوع خودرو و پوشش، حق بیمه را محاسبه کنید' },
+      { title: 'انتخاب شرکت بیمه', desc: 'شرکت بیمه مورد نظر را انتخاب کنید' },
+      { title: 'تکمیل فرم', desc: 'فرم بیمه‌نامه را تکمیل کنید' },
+      { title: 'پرداخت', desc: 'حق بیمه را پرداخت کنید' },
+      { title: 'صدور بیمه‌نامه', desc: 'بیمه‌نامه الکترونیکی را دریافت و به کاربر ارائه دهید' },
+    ],
+    s9: [
+      { title: 'دریافت اطلاعات', desc: 'اپراتور (همراه اول/ایرانسل/رایتل)، شماره موبایل و نوع خرید را دریافت کنید' },
+      { title: 'بررسی شماره', desc: 'صحت شماره موبایل و اپراتور را بررسی کنید' },
+      { title: 'انتخاب بسته', desc: 'بسته شارژ یا اینترنت مورد نظر را انتخاب کنید' },
+      { title: 'پرداخت', desc: 'مبلغ را از طریق درگاه پرداخت کنید' },
+      { title: 'تأیید شارژ', desc: 'منتظر پیامک تأیید از اپراتور باشید' },
+      { title: 'اطلاع‌رسانی', desc: 'نتیجه را به کاربر اطلاع دهید' },
+    ],
+    s10: [
+      { title: 'دریافت اطلاعات', desc: 'نوع خدمت (گذرنامه/گواهینامه/کارت پایان خدمت/سوءپیشینه) را مشخص کنید' },
+      { title: 'دریافت مدارک', desc: 'عکس پرسنلی، کارت ملی و شناسنامه را دریافت کنید' },
+      { title: 'ورود به سامانه پلیس+۱۰', desc: 'به سایت police.ir مراجعه کنید' },
+      { title: 'تکمیل فرم', desc: 'فرم درخواست را تکمیل کنید' },
+      { title: 'پرداخت هزینه', desc: 'هزینه خدمت را پرداخت کنید' },
+      { title: 'دریافت نوبت', desc: 'در صورت نیاز، نوبت حضوری دریافت کنید' },
+    ],
+    s11: [
+      { title: 'دریافت فایل', desc: 'فایل یا تصویر متن را دریافت کنید' },
+      { title: 'تعیین نوع تایپ', desc: 'نوع تایپ (ساده/فرمول‌دار/صفحه‌آرایی) را مشخص کنید' },
+      { title: 'برآورد حجم', desc: 'تعداد صفحات تقریبی را مشخص کنید' },
+      { title: 'انجام تایپ', desc: 'متن را تایپ و صفحه‌آرایی کنید' },
+      { title: 'بازبینی', desc: 'خروجی را بازبینی کنید' },
+      { title: 'تحویل', desc: 'فایل نهایی را به کاربر تحویل دهید' },
+    ],
+    s12: [
+      { title: 'دریافت کد ملی', desc: 'کد ملی مشمول سهام عدالت را دریافت کنید' },
+      { title: 'ورود به سامانه', desc: 'به سایت sahaledalat.ir مراجعه کنید' },
+      { title: 'مشاهده وضعیت', desc: 'وضعیت سهام و ارزش آن را مشاهده کنید' },
+      { title: 'انتخاب عملیات', desc: 'عملیات مورد نظر (مشاهده/فروش/تغییر روش) را انتخاب کنید' },
+      { title: 'تأیید', desc: 'عملیات را تأیید کنید' },
+      { title: 'دریافت رسید', desc: 'رسید عملیات را به کاربر ارائه دهید' },
+    ],
+    s18: [
+      { title: 'دریافت شناسه قبض', desc: 'شناسه قبض (۶ تا ۱۳ رقم) را دریافت کنید' },
+      { title: 'دریافت شناسه پرداخت', desc: 'شناسه پرداخت را دریافت کنید' },
+      { title: 'ورود به سامانه', desc: 'به سامانه پرداخت قبوض مراجعه کنید' },
+      { title: 'وارد کردن شناسه‌ها', desc: 'شناسه قبض و پرداخت را وارد کنید' },
+      { title: 'بررسی مبلغ', desc: 'مبلغ قبض و جزئیات را بررسی کنید' },
+      { title: 'پرداخت', desc: 'قبض را پرداخت کنید' },
+      { title: 'ارسال رسید', desc: 'رسید پرداخت را به کاربر ارائه دهید' },
+    ],
+  };
+  
+  return steps[serviceId] || [
+    { title: 'دریافت درخواست', desc: 'اطلاعات و مدارک لازم را از کاربر دریافت کنید' },
+    { title: 'بررسی مدارک', desc: 'مدارک ارائه شده را از نظر صحت و کامل بودن بررسی کنید' },
+    { title: 'ورود به سامانه', desc: 'به سامانه مربوطه مراجعه و با اطلاعات کاربر وارد شوید' },
+    { title: 'ثبت اطلاعات', desc: 'اطلاعات را در فرم‌های سامانه وارد کنید' },
+    { title: 'آپلود مدارک', desc: 'مدارک اسکن شده را در سامانه آپلود کنید' },
+    { title: 'پرداخت هزینه', desc: 'هزینه خدمت را از طریق درگاه پرداخت کنید' },
+    { title: 'دریافت رسید', desc: 'رسید و کد پیگیری را دریافت و به کاربر ارائه دهید' },
+  ];
+}
+
+function getServiceDocuments(serviceId: string): string[] {
+  const docs: Record<string, string[]> = {
+    s1: ['عکس پرسنلی ۳×۴ جدید (زمینه سفید، بدون روتوش)', 'تصویر کارت ملی (پشت و رو)', 'مدرک تحصیلی آخرین مقطع', 'شماره تلفن ثابت و همراه'],
+    s2: ['تصویر کارت ملی', 'گواهی اشتغال به تحصیل معتبر', 'آخرین مدرک تحصیلی'],
+    s3: ['عکس پرسنلی ۳×۴', 'تصویر کارت ملی', 'مدرک پیش‌دانشگاهی یا دیپلم'],
+    s4: ['تصویر واضح کارت ملی (پشت و رو)', 'تصویر صفحه اول شناسنامه', 'شماره موبایل فعال به نام متقاضی', 'کد پستی محل سکونت'],
+    s5: ['فایل دیجیتال سند (PDF، Word یا تصویر با کیفیت)'],
+    s6: ['سند اصلی جهت ترجمه', 'تعیین زبان مبدأ و مقصد'],
+    s7: ['کد ملی یا شناسه ملی', 'اسناد و مدارک مالی سال مورد نظر', 'دفتر کل و روزنامه (برای اشخاص حقوقی)'],
+    s8: ['کارت ماشین', 'بیمه‌نامه قبلی (در صورت تمدید)', 'کارت ملی مالک خودرو', 'گواهینامه رانندگی'],
+    s9: ['شماره موبایل معتبر'],
+    s10: ['عکس پرسنلی ۳×۴ جدید', 'تصویر کارت ملی', 'تصویر شناسنامه', 'کد پستی'],
+    s11: ['فایل یا تصویر متن (خوانا و واضح)', 'فرمت خروجی مورد نظر (Word/PDF)'],
+    s12: ['کد ملی مشمول سهام عدالت', 'شماره حساب بانکی به نام متقاضی'],
+    s13: ['تصویر کارت ملی', 'مدرک اثبات آدرس (قبض آب/برق/گاز)', 'تصویر آخرین مدرک تحصیلی'],
+    s14: ['تصویر کارت ملی', 'گواهی پزشکی (برای پوشش‌های خاص)', 'اطلاعات شغلی'],
+    s15: ['فایل متن اصلی', 'تعیین زبان مبدأ و مقصد'],
+    s16: ['تصویر کارت ملی', 'تصویر شناسنامه', 'عکس ۳×۴', 'آدرس و کد پستی'],
+    s17: ['اطلاعات طرفین قرارداد', 'توضیحات موضوع قرارداد', 'مدارک هویتی'],
+    s18: ['شناسه قبض', 'شناسه پرداخت'],
+    s19: ['کد ملی یا شناسه ملی', 'مدارک مالی سال مورد نظر', 'اسناد درآمد و هزینه'],
+    s20: ['تصویر کارت ملی', 'کارت ماشین یا سند خودرو'],
+    s21: ['کارنامه کنکور', 'کد دسترسی انتخاب رشته'],
+    s22: ['تصویر پاسپورت', 'بلیط هواپیما', 'اطلاعات سفر'],
+    s23: ['تصویر کارت ملی موکل و وکیل', 'توضیحات موضوع وکالت'],
+    s24: ['تصویر کارت ملی', 'آدرس و کد پستی'],
+    s25: ['نیازمندی‌های سایت', 'محتوای اولیه', 'لوگو و تصاویر'],
+    s26: ['فایل نهایی', 'نوع صحافی مورد نظر'],
+    s27: ['کد ملی سرپرست خانوار'],
+    s28: ['تصویر کارت ملی', 'فیش حقوقی یا مدارک درآمدی', 'سند ملکی (برای وام مسکن)'],
+    s29: ['تصویر سند ملک', 'متراژ و مشخصات ملک'],
+    s30: ['فایل متن', 'زبان مقصد', 'زمان تحویل مورد نظر'],
+    s31: ['گواهی فوت', 'تصویر شناسنامه متوفی', 'اطلاعات وراث'],
+    s32: ['تصویر کارت ملی', 'نوع فرم مورد نظر'],
+    s33: ['شماره موبایل', 'شناسه قبض'],
+    s34: ['شناسه ملی شرکت', 'اسناد مالی فصل'],
+    s35: ['تصویر کارت ملی', 'تصویر شناسنامه', 'عکس ۳×۴'],
+    s36: ['تصویر شناسنامه دانش‌آموز', 'کد ملی', 'کارنامه سال قبل'],
+    s37: ['کارت ماشین', 'بیمه‌نامه قبلی', 'کارت ملی'],
+    s38: ['تصویر کارت ملی شاکی', 'مدارک و مستندات'],
+    s39: ['شماره تلفن ثابت', 'کد پستی', 'تصویر کارت ملی'],
+    s40: ['نام دامنه', 'نام کاربری مورد نظر'],
+    s41: ['فایل طرح با کیفیت', 'ابعاد و تعداد'],
+    s42: ['تعیین خدمت', 'تاریخ و ساعت مراجعه'],
+  };
+  return docs[serviceId] || [];
+}
+
+function getServiceNotes(serviceId: string): string[] {
+  const notes: Record<string, string[]> = {
+    s1: [
+      'عکس باید جدید، ۳×۴ و با زمینه سفید باشد',
+      'حجم فایل عکس نباید بیشتر از ۲۰۰ کیلوبایت باشد',
+      'کد پیگیری ۱۲ رقمی را حتماً یادداشت کنید',
+      'مهلت ثبت‌نام را چک کنید و قبل از پایان اقدام کنید',
+      'در صورت خطا در اطلاعات، امکان ویرایش تا مهلت وجود دارد',
+    ],
+    s2: [
+      'درخواست معافیت تحصیلی فقط برای دانشجویان فعال مجاز است',
+      'مدارک باید واضح و خوانا باشند',
+      'پاسخ درخواست معمولاً ظرف ۷۲ ساعت صادر می‌شود',
+      'در صورت نیاز به مراجعه حضوری، نوبت بگیرید',
+    ],
+    s3: [
+      'گروه آزمایشی قابل تغییر نیست، دقت کنید',
+      'عکس باید مطابق با استانداردهای سنجش باشد',
+      'کد پیگیری را تا زمان اعلام نتایج نگهداری کنید',
+    ],
+    s4: [
+      'شماره موبایل حتماً باید به نام متقاضی باشد',
+      'احراز هویت حضوری نیز ممکن است لازم باشد',
+      'فرآیند ثبت‌نام ممکن است تا ۷۲ ساعت طول بکشد',
+      'رمز شخصی ثنا را محرمانه نگهداری کنید',
+      'پس از ثبت‌نام، ابلاغیه‌های قضایی به صورت الکترونیکی ارسال می‌شود',
+    ],
+    s5: [
+      'فایل‌های PDF بهترین کیفیت چاپ را دارند',
+      'برای چاپ رنگی، فایل باید با رزولوشن حداقل ۳۰۰dpi باشد',
+      'قبل از چاپ انبوه، یک نمونه چاپ کنید',
+    ],
+    s6: [
+      'ترجمه رسمی دارای مهر و امضای مترجم قوه قضاییه است',
+      'زمان تحویل بسته به حجم و تخصص سند متغیر است (معمولاً ۲۴ تا ۷۲ ساعت)',
+      'امکان ترجمه فوری با هزینه اضافی وجود دارد',
+      'ترجمه رسمی برای ارائه به سفارت‌خانه‌ها و مؤسسات بین‌المللی معتبر است',
+    ],
+    s7: [
+      'اظهارنامه مالیاتی باید تا پایان خرداد هر سال ارسال شود',
+      'جریمه تأخیر در ارسال اظهارنامه سنگین است',
+      'مدارک مالی باید حداقل ۱۰ سال نگهداری شوند',
+    ],
+    s8: [
+      'بیمه‌نامه الکترونیکی به جای بیمه‌نامه کاغذی صادر می‌شود',
+      'تخفیف عدم خسارت سال‌های قبل منتقل می‌شود',
+      'در صورت فروش خودرو، بیمه‌نامه قابل انتقال است',
+    ],
+    s9: [
+      'شارژ بلافاصله پس از پرداخت اعمال می‌شود',
+      'در صورت عدم اعمال، تا ۲۴ ساعت صبر کنید',
+      'بسته‌های اینترنت معمولاً از زمان فعال‌سازی محاسبه می‌شوند',
+      'در صورت بروز مشکل، با پشتیبانی تماس بگیرید',
+    ],
+    s10: [
+      'عکس باید مطابق با استاندارد پلیس+۱۰ باشد',
+      'برای گذرنامه، مراجعه حضوری جهت انگشت‌نگاری الزامی است',
+      'صدور گذرنامه معمولاً ۱۰ روز کاری طول می‌کشد',
+    ],
+    s11: [
+      'تایپ فرمول‌دار هزینه بیشتری دارد',
+      'صفحه‌آرایی پایان‌نامه باید مطابق با فرمت دانشگاه باشد',
+      'فایل نهایی را حتماً بازبینی کنید',
+    ],
+    s12: [
+      'فروش سهام عدالت فقط از طریق بانک‌های مجاز امکان‌پذیر است',
+      'سود سهام عدالت سالانه به حساب مشمولان واریز می‌شود',
+    ],
+    s18: [
+      'قبل از پرداخت، مبلغ و نوع قبض را بررسی کنید',
+      'رسید پرداخت را تا پایان دوره نگهداری کنید',
+      'در صورت قطع خدمات، ابتدا قبض‌های معوقه را پرداخت کنید',
+    ],
+    s19: [
+      'اظهارنامه باید تا پایان تیرماه ارسال شود',
+      'عدم ارسال به موقع موجب جریمه می‌شود',
+      'اسناد مالی باید منظم و قابل ردیابی باشند',
+    ],
+    s28: [
+      'ضامن معتبر برای اکثر وام‌ها الزامی است',
+      'مدارک درآمدی باید رسمی و قابل تأیید باشند',
+      'بررسی و پرداخت وام معمولاً ۲ تا ۴ هفته طول می‌کشد',
+    ],
+  };
+  
+  return notes[serviceId] || [
+    'مدارک باید واضح و خوانا باشند',
+    'اطلاعات وارد شده باید با مدارک مطابقت داشته باشد',
+    'در صورت بروز مشکل، با پشتیبانی تماس بگیرید',
+    'کد پیگیری را تا اتمام فرآیند نگهداری کنید',
+  ];
+}
+
 /* ============ TRAINING VIEW ============ */
-function TrainingView() {
-  const [activeTab, setActiveTab] = useState<'tutorials' | 'resources'>('tutorials');
+function TrainingView({ services }: { services: Service[] }) {
+  const [activeTab, setActiveTab] = useState<'tutorials' | 'resources' | 'services'>('tutorials');
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [bookmarkedSites, setBookmarkedSites] = useState<Set<string>>(new Set());
   const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false);
+  const [expandedService, setExpandedService] = useState<string | null>(null);
 
   const tutorials = [
     {
@@ -1434,6 +1704,15 @@ function TrainingView() {
           آموزش‌های پنل
         </button>
         <button
+          onClick={() => setActiveTab('services')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+            activeTab === 'services' ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <FileCheck size={16} />
+          آموزش خدمات
+        </button>
+        <button
           onClick={() => setActiveTab('resources')}
           className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
             activeTab === 'resources' ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'
@@ -1546,6 +1825,167 @@ function TrainingView() {
               </li>
             </ul>
           </div>
+        </div>
+      )}
+
+      {/* Services Training Tab */}
+      {activeTab === 'services' && (
+        <div className="space-y-4">
+          {/* Banner */}
+          <div className="bg-gradient-to-bl from-purple-600 to-purple-800 rounded-2xl p-6 text-white">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <FileCheck size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-1">آموزش انجام خدمات</h3>
+                <p className="text-purple-100 text-sm leading-6">
+                  راهنمای کامل و گام‌به‌گام انجام هر یک از ۴۲ خدمت کافی‌نت ابری. 
+                  با مطالعه این آموزش‌ها، می‌توانید تمام خدمات را به صورت حرفه‌ای و بدون خطا انجام دهید.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm sticky top-0 z-10">
+            <div className="relative">
+              <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="جستجو در آموزش خدمات..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pr-10 pl-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition"
+              />
+            </div>
+          </div>
+
+          {/* Service Training Cards */}
+          <div className="space-y-3">
+            {services
+              .filter((s: Service) => s.title.includes(searchQuery) || s.description.includes(searchQuery))
+              .map((service: Service) => {
+                const isExpanded = expandedService === service.id;
+                const SIcon = getServiceIcon(service.iconId);
+                
+                return (
+                  <div key={service.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <button
+                      onClick={() => setExpandedService(isExpanded ? null : service.id)}
+                      className="w-full p-4 flex items-center gap-4 text-right hover:bg-gray-50 transition"
+                    >
+                      <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center shrink-0">
+                        <SIcon size={24} className="text-primary-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-800">{service.title}</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">{service.description}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-primary-600 font-medium">{service.price}</span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-500">{service.duration}</span>
+                        </div>
+                      </div>
+                      <ChevronDown size={20} className={`text-gray-400 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 bg-gray-50">
+                        <div className="p-5">
+                          {/* Training Content */}
+                          <div className="grid md:grid-cols-2 gap-5">
+                            {/* Left: Illustration */}
+                            <div className="bg-white rounded-xl p-6 border border-gray-200">
+                              <div className="aspect-video bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg flex items-center justify-center mb-4">
+                                <div className="text-center">
+                                  <SIcon size={64} className="text-primary-400 mx-auto mb-2" />
+                                  <p className="text-xs text-primary-600 font-medium">تصویر آموزشی</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <Clock size={14} className="text-gray-400" />
+                                  <span>زمان تقریبی: {service.duration}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <CreditCard size={14} className="text-gray-400" />
+                                  <span>هزینه: {service.price}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right: Steps */}
+                            <div className="space-y-3">
+                              <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                                <ClipboardList size={18} className="text-primary-600" />
+                                مراحل انجام خدمت
+                              </h4>
+                              <div className="space-y-2">
+                                {getServiceSteps(service.id).map((step, i) => (
+                                  <div key={i} className="flex gap-3 bg-white rounded-lg p-3 border border-gray-200">
+                                    <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
+                                      <span className="text-xs font-bold text-primary-700">{i + 1}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-800">{step.title}</p>
+                                      <p className="text-xs text-gray-600 mt-0.5 leading-5">{step.desc}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Required Documents */}
+                          {getServiceDocuments(service.id).length > 0 && (
+                            <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                              <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                                <FileText size={16} />
+                                مدارک مورد نیاز
+                              </h4>
+                              <ul className="space-y-1">
+                                {getServiceDocuments(service.id).map((doc, i) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-amber-700">
+                                    <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                                    <span>{doc}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Important Notes */}
+                          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-2">
+                              <AlertCircle size={16} />
+                              نکات مهم
+                            </h4>
+                            <ul className="space-y-1">
+                              {getServiceNotes(service.id).map((note, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-blue-700">
+                                  <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                                  <span>{note}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+
+          {searchQuery && initialServices.every(s => 
+            !s.title.includes(searchQuery) && !s.description.includes(searchQuery)
+          ) && (
+            <div className="text-center py-12">
+              <Search size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">خدمتی با این مشخصات یافت نشد</p>
+            </div>
+          )}
         </div>
       )}
 
