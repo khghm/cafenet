@@ -132,6 +132,55 @@ export const ChartIcon: React.FC<IconProps> = ({ className = '', size = 24 }) =>
   </svg>
 );
 
+export const BankIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11" />
+  </svg>
+);
+
+export const InsuranceIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M9 12l2 2 4-4" />
+  </svg>
+);
+
+export const TranslationIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1" />
+    <path d="M22 22l-5-10-5 10M14.5 17h7" />
+  </svg>
+);
+
+export const CertificateIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="6" />
+    <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
+  </svg>
+);
+
+export const FormIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+  </svg>
+);
+
+export const BillIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <path d="M14 2v6h6M16 13H8M16 17H8" />
+    <path d="M10 9H8" />
+  </svg>
+);
+
+export const TaxIcon: React.FC<IconProps> = ({ className = '', size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M9 9h6M9 13h6M9 17h3" />
+  </svg>
+);
+
 export const getCategoryIcon = (categoryId: string) => {
   const icons: Record<string, React.FC<IconProps>> = {
     government: GovernmentIcon,
@@ -160,6 +209,36 @@ export const getServiceIcon = (serviceId: string) => {
     s10: PassportIcon,
     s11: KeyboardIcon,
     s12: ChartIcon,
+    s13: BankIcon,
+    s14: InsuranceIcon,
+    s15: TranslationIcon,
+    s16: CertificateIcon,
+    s17: FormIcon,
+    s18: BillIcon,
+    s19: TaxIcon,
+    s20: GovernmentIcon,
+    s21: EducationIcon,
+    s22: FinancialIcon,
+    s23: LegalIcon,
+    s24: CommunicationIcon,
+    s25: DigitalIcon,
+    s26: PrintIcon,
+    s27: OtherIcon,
+    s28: BankIcon,
+    s29: InsuranceIcon,
+    s30: TranslationIcon,
+    s31: CertificateIcon,
+    s32: FormIcon,
+    s33: BillIcon,
+    s34: TaxIcon,
+    s35: GovernmentIcon,
+    s36: EducationIcon,
+    s37: FinancialIcon,
+    s38: LegalIcon,
+    s39: CommunicationIcon,
+    s40: DigitalIcon,
+    s41: PrintIcon,
+    s42: OtherIcon,
   };
   return icons[serviceId] || OtherIcon;
 };
