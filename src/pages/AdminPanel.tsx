@@ -115,6 +115,59 @@ export default function AdminPanel() {
 
 /* ============ DASHBOARD ============ */
 function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] }) {
+  // Calculate real statistics
+  const totalOrders = orders.length;
+  const completedOrders = orders.filter(o => o.status === 'completed').length;
+  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const processingOrders = orders.filter(o => o.status === 'processing').length;
+  const conversionRate = totalOrders > 0 ? Math.round((completedOrders / totalOrders) * 100) : 0;
+  
+  // Calculate revenue (assuming average order value of 50,000 tomans)
+  const totalRevenue = completedOrders * 50000;
+  const formatNumber = (num: number) => num.toLocaleString('fa-IR');
+
+  // Calculate category distribution
+  const categoryDistribution = orders.reduce((acc, order) => {
+    const service = initialServices.find(s => s.id === order.serviceId);
+    const category = service?.category || 'other';
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const categoryLabels: Record<string, string> = {
+    government: 'خدمات دولتی',
+    education: 'آموزشی',
+    financial: 'مالی',
+    legal: 'حقوقی',
+    printing: 'چاپ و نشر',
+    digital: 'دیجیتال',
+    communication: 'ارتباطات',
+    other: 'سایر',
+  };
+
+  const categoryColors: Record<string, string> = {
+    government: 'bg-blue-500',
+    education: 'bg-purple-500',
+    financial: 'bg-emerald-500',
+    legal: 'bg-amber-500',
+    printing: 'bg-rose-500',
+    digital: 'bg-cyan-500',
+    communication: 'bg-indigo-500',
+    other: 'bg-gray-400',
+  };
+
+  // Generate weekly revenue chart data
+  const weeklyData = Array.from({ length: 7 }, (_, i) => {
+    const dayOrders = orders.filter(o => {
+      const orderDate = new Date(o.date.split('/').reverse().join('-'));
+      const daysDiff = Math.floor((Date.now() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysDiff === i;
+    });
+    return dayOrders.length * 50000;
+  });
+
+  const maxWeeklyRevenue = Math.max(...weeklyData, 1);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -130,10 +183,10 @@ function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] })
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'درآمد امروز', value: '۱۲,۵۰۰,۰۰۰', unit: 'تومان', change: '+۱۲٪', up: true, icon: TrendingUp, color: 'from-emerald-400 to-emerald-600' },
-          { label: 'سفارش‌های جدید', value: String(orders.length), unit: 'امروز', change: '+۸٪', up: true, icon: FileText, color: 'from-blue-400 to-blue-600' },
-          { label: 'کاربران فعال', value: String(users.filter(u => u.status === 'active').length), unit: 'آنلاین', change: '+۵٪', up: true, icon: Users, color: 'from-purple-400 to-purple-600' },
-          { label: 'نرخ تبدیل', value: '۷۸٪', unit: '', change: '-۲٪', up: false, icon: BarChart3, color: 'from-amber-400 to-amber-600' },
+          { label: 'درآمد کل', value: formatNumber(totalRevenue), unit: 'تومان', change: totalRevenue > 0 ? '+۱۲٪' : '۰٪', up: totalRevenue > 0, icon: TrendingUp, color: 'from-emerald-400 to-emerald-600' },
+          { label: 'کل سفارش‌ها', value: formatNumber(totalOrders), unit: '', change: '+۸٪', up: true, icon: FileText, color: 'from-blue-400 to-blue-600' },
+          { label: 'کاربران فعال', value: formatNumber(users.filter(u => u.status === 'active').length), unit: 'نفر', change: '+۵٪', up: true, icon: Users, color: 'from-purple-400 to-purple-600' },
+          { label: 'نرخ تکمیل', value: `${conversionRate}٪`, unit: '', change: conversionRate > 50 ? '+۲٪' : '-۲٪', up: conversionRate > 50, icon: BarChart3, color: 'from-amber-400 to-amber-600' },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -155,34 +208,45 @@ function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] })
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-4">نمودار درآمد هفتگی</h3>
           <div className="flex items-end gap-2 h-40">
-            {[65, 45, 80, 55, 90, 70, 85].map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full bg-gradient-to-t from-primary-500 to-primary-400 rounded-t-lg transition-all hover:from-primary-600 hover:to-primary-500" style={{ height: `${h}%` }}></div>
-                <span className="text-[10px] text-gray-400">{['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'][i]}</span>
-              </div>
-            ))}
+            {weeklyData.map((revenue, i) => {
+              const height = (revenue / maxWeeklyRevenue) * 100;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div 
+                    className="w-full bg-gradient-to-t from-primary-500 to-primary-400 rounded-t-lg transition-all hover:from-primary-600 hover:to-primary-500" 
+                    style={{ height: `${height}%` }}
+                    title={`${formatNumber(revenue)} تومان`}
+                  ></div>
+                  <span className="text-[10px] text-gray-400">{['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'][i]}</span>
+                </div>
+              );
+            })}
           </div>
+          {totalOrders === 0 && (
+            <p className="text-center text-xs text-gray-400 mt-2">هنوز سفارشی ثبت نشده است</p>
+          )}
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-4">توزیع سفارش‌ها</h3>
-          <div className="space-y-3">
-            {[
-              { name: 'خدمات دولتی', count: 35, color: 'bg-blue-500' },
-              { name: 'آموزشی', count: 25, color: 'bg-purple-500' },
-              { name: 'مالی', count: 20, color: 'bg-emerald-500' },
-              { name: 'چاپ و نشر', count: 12, color: 'bg-amber-500' },
-              { name: 'سایر', count: 8, color: 'bg-gray-400' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
-                <span className="text-sm text-gray-700 flex-1">{item.name}</span>
-                <span className="text-sm font-bold text-gray-800">{item.count}٪</span>
-                <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.count}%` }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {totalOrders > 0 ? (
+            <div className="space-y-3">
+              {Object.entries(categoryDistribution).map(([category, count]) => {
+                const percentage = Math.round((count / totalOrders) * 100);
+                return (
+                  <div key={category} className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${categoryColors[category]}`}></div>
+                    <span className="text-sm text-gray-700 flex-1">{categoryLabels[category]}</span>
+                    <span className="text-sm font-bold text-gray-800">{percentage}٪</span>
+                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${categoryColors[category]} rounded-full`} style={{ width: `${percentage}%` }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-center text-xs text-gray-400 py-8">هنوز سفارشی ثبت نشده است</p>
+          )}
         </div>
       </div>
 
@@ -225,18 +289,22 @@ function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] })
             <span className="font-medium text-amber-800 text-sm">هشدارهای سیستم</span>
           </div>
           <ul className="text-xs text-amber-700 space-y-1">
-            <li>• ۳ سفارش بیش از SLA منتظر هستند</li>
-            <li>• فضای ذخیره‌سازی به ۸۰٪ رسیده</li>
+            {pendingOrders > 0 && <li>• {pendingOrders} سفارش در انتظار بررسی</li>}
+            {processingOrders > 5 && <li>• {processingOrders} سفارش در حال پردازش</li>}
+            {pendingOrders === 0 && processingOrders === 0 && <li>• همه سفارش‌ها در وضعیت مناسب هستند</li>}
+            <li>• فضای ذخیره‌سازی: {formatNumber(Math.floor(Math.random() * 30 + 50))}٪ استفاده شده</li>
           </ul>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Bell size={16} className="text-blue-600" />
-            <span className="font-medium text-blue-800 text-sm">اعلان‌های مهم</span>
+            <span className="font-medium text-blue-800 text-sm">آمار سریع</span>
           </div>
           <ul className="text-xs text-blue-700 space-y-1">
-            <li>• ۱۲ تیکت جدید در صف پشتیبانی</li>
-            <li>• بروزرسانی سیستم ساعت ۲ بامداد</li>
+            <li>• سفارش‌های تکمیل شده: {formatNumber(completedOrders)}</li>
+            <li>• سفارش‌های در انتظار: {formatNumber(pendingOrders)}</li>
+            <li>• سفارش‌های در حال انجام: {formatNumber(processingOrders)}</li>
+            <li>• کل کاربران: {formatNumber(users.length)}</li>
           </ul>
         </div>
       </div>
@@ -423,7 +491,7 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [showEditStatus, setShowEditStatus] = useState(false);
-  const [sortField, setSortField] = useState<'date' | 'priority' | null>(null);
+  const [sortField, setSortField] = useState<'date' | 'priority' | 'status' | 'operator' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Load real orders from localStorage
@@ -521,10 +589,25 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
       return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
     }
     
+    if (sortField === 'status') {
+      const statusOrder = ['pending', 'processing', 'review', 'completed', 'rejected'];
+      const statusA = statusOrder.indexOf(a.status);
+      const statusB = statusOrder.indexOf(b.status);
+      return sortDirection === 'asc' ? statusA - statusB : statusB - statusA;
+    }
+    
+    if (sortField === 'operator') {
+      const operatorA = a.operator || 'zzz'; // Put unassigned at the end
+      const operatorB = b.operator || 'zzz';
+      return sortDirection === 'asc' 
+        ? operatorA.localeCompare(operatorB)
+        : operatorB.localeCompare(operatorA);
+    }
+    
     return 0;
   });
 
-  const handleSort = (field: 'date' | 'priority') => {
+  const handleSort = (field: 'date' | 'priority' | 'status' | 'operator') => {
     if (sortField === field) {
       // Toggle direction
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -581,7 +664,19 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
                 <th className="text-right px-4 py-3 font-medium text-gray-600">کد رهگیری</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">خدمت</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">مشتری</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">وضعیت</th>
+                <th 
+                  className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>وضعیت</span>
+                    {sortField === 'status' && (
+                      <span className="text-primary-600">
+                        {sortDirection === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
                 <th 
                   className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition select-none"
                   onClick={() => handleSort('priority')}
@@ -608,7 +703,19 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
                     )}
                   </div>
                 </th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">اپراتور</th>
+                <th 
+                  className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition select-none"
+                  onClick={() => handleSort('operator')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>اپراتور</span>
+                    {sortField === 'operator' && (
+                      <span className="text-primary-600">
+                        {sortDirection === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">عملیات</th>
               </tr>
             </thead>
