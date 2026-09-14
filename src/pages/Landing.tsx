@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { services, categories } from '../data/services';
-import { ArrowLeft, Shield, Clock, CreditCard, Search, Star, Zap, Users, CheckCircle } from 'lucide-react';
+import { getServiceIcon, getCategoryIcon } from '../components/Icons';
+import { ArrowLeft, Shield, Clock, CreditCard, Search, Star, Zap, Users, CheckCircle, Grid3X3 } from 'lucide-react';
 
 export default function Landing() {
   const popularServices = services.filter(s => s.popular);
@@ -66,18 +67,23 @@ export default function Landing() {
                     <span className="text-xs text-gray-400 mr-auto">کافی‌نت ابری</span>
                   </div>
                   <div className="space-y-3">
-                    {popularServices.slice(0, 3).map((s, i) => (
-                      <div key={s.id} className="flex items-center gap-3 p-3 bg-white/60 rounded-xl border border-white/40">
-                        <span className="text-2xl">{s.icon}</span>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-800">{s.title}</p>
-                          <p className="text-xs text-gray-500">{s.price}</p>
+                    {popularServices.slice(0, 3).map((s, i) => {
+                      const Icon = getServiceIcon(s.iconId);
+                      return (
+                        <div key={s.id} className="flex items-center gap-3 p-3 bg-white/60 rounded-xl border border-white/40">
+                          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                            <Icon size={20} className="text-primary-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-800">{s.title}</p>
+                            <p className="text-xs text-gray-500">{s.price}</p>
+                          </div>
+                          <div className={`text-xs px-2 py-1 rounded-full ${i === 0 ? 'bg-emerald-100 text-emerald-700' : i === 1 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {i === 0 ? 'تحویل شد' : i === 1 ? 'در حال بررسی' : 'در صف'}
+                          </div>
                         </div>
-                        <div className={`text-xs px-2 py-1 rounded-full ${i === 0 ? 'bg-emerald-100 text-emerald-700' : i === 1 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {i === 0 ? 'تحویل شد' : i === 1 ? 'در حال بررسی' : 'در صف'}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <div className="text-center p-2 bg-primary-50 rounded-lg">
@@ -131,20 +137,25 @@ export default function Landing() {
           <p className="text-gray-500">هر آنچه از یک کافی‌نت نیاز دارید، اینجا موجود است</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              to="/services"
-              className="group relative overflow-hidden bg-white rounded-2xl p-5 border border-gray-100 hover:border-primary-200 hover:shadow-lg transition-all duration-300"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-5 transition-opacity`}></div>
-              <span className="text-3xl mb-3 block">{cat.icon}</span>
-              <h3 className="font-semibold text-gray-800 text-sm">{cat.title}</h3>
-              <p className="text-xs text-gray-400 mt-1">
-                {services.filter(s => s.category === cat.id).length} خدمت
-              </p>
-            </Link>
-          ))}
+          {categories.map((cat) => {
+            const CatIcon = getCategoryIcon(cat.iconId);
+            return (
+              <Link
+                key={cat.id}
+                to="/services"
+                className="group relative overflow-hidden bg-white rounded-2xl p-5 border border-gray-100 hover:border-primary-200 hover:shadow-lg transition-all duration-300"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-5 transition-opacity`}></div>
+                <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mb-3 group-hover:bg-primary-50 transition">
+                  <CatIcon size={24} className="text-gray-600 group-hover:text-primary-600 transition" />
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm">{cat.title}</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  {services.filter(s => s.category === cat.id).length} خدمت
+                </p>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -161,26 +172,31 @@ export default function Landing() {
           </Link>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {popularServices.map((service) => (
-            <Link
-              key={service.id}
-              to={`/order/${service.id}`}
-              className="group bg-white rounded-2xl p-5 border border-gray-100 hover:border-primary-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <span className="text-3xl">{service.icon}</span>
-                <Star size={16} className="text-amber-400 fill-amber-400" />
-              </div>
-              <h3 className="font-bold text-gray-800 mb-1 group-hover:text-primary-700 transition">{service.title}</h3>
-              <p className="text-xs text-gray-500 leading-5 mb-3">{service.description}</p>
-              <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                <span className="text-sm font-bold text-primary-600">{service.price}</span>
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <Clock size={12} /> {service.duration}
-                </span>
-              </div>
-            </Link>
-          ))}
+          {popularServices.map((service) => {
+            const ServiceIcon = getServiceIcon(service.iconId);
+            return (
+              <Link
+                key={service.id}
+                to={`/order/${service.id}`}
+                className="group bg-white rounded-2xl p-5 border border-gray-100 hover:border-primary-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center group-hover:bg-primary-100 transition">
+                    <ServiceIcon size={24} className="text-primary-600" />
+                  </div>
+                  <Star size={16} className="text-amber-400 fill-amber-400" />
+                </div>
+                <h3 className="font-bold text-gray-800 mb-1 group-hover:text-primary-700 transition">{service.title}</h3>
+                <p className="text-xs text-gray-500 leading-5 mb-3">{service.description}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                  <span className="text-sm font-bold text-primary-600">{service.price}</span>
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <Clock size={12} /> {service.duration}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -221,15 +237,17 @@ export default function Landing() {
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { title: 'امنیت در سطح بانکی', desc: 'رمزنگاری پیشرفته، احراز هویت چندمرحله‌ای و محافظت کامل از اطلاعات شما', icon: '🔒', color: 'bg-blue-50' },
-            { title: 'سرعت بی‌نظیر', desc: 'پردازش فوری سفارش‌ها با سیستم هوشمند تخصیص و گردش‌کار خودکار', icon: '⚡', color: 'bg-amber-50' },
-            { title: 'پشتیبانی ۲۴/۷', desc: 'تیم پشتیبانی حرفه‌ای و دستیار هوشمند در تمام ساعات شبانه‌روز', icon: '💬', color: 'bg-emerald-50' },
-            { title: 'قیمت شفاف', desc: 'بدون هزینه پنهان، قیمت‌گذاری شفاف و فاکتور رسمی برای هر سفارش', icon: '💎', color: 'bg-purple-50' },
-            { title: 'ردیابی لحظه‌ای', desc: 'از لحظه ثبت تا تحویل، هر مرحله را به‌صورت زنده مشاهده کنید', icon: '📍', color: 'bg-rose-50' },
-            { title: 'تنوع خدمات', desc: 'بیش از ۱۲۰ خدمت متنوع در دسته‌بندی‌های مختلف، همه در یک پلتفرم', icon: '🎯', color: 'bg-cyan-50' },
+            { title: 'امنیت در سطح بانکی', desc: 'رمزنگاری پیشرفته، احراز هویت چندمرحله‌ای و محافظت کامل از اطلاعات شما', icon: Shield, color: 'bg-blue-50', iconColor: 'text-blue-600' },
+            { title: 'سرعت بی‌نظیر', desc: 'پردازش فوری سفارش‌ها با سیستم هوشمند تخصیص و گردش‌کار خودکار', icon: Zap, color: 'bg-amber-50', iconColor: 'text-amber-600' },
+            { title: 'پشتیبانی ۲۴/۷', desc: 'تیم پشتیبانی حرفه‌ای و دستیار هوشمند در تمام ساعات شبانه‌روز', icon: CreditCard, color: 'bg-emerald-50', iconColor: 'text-emerald-600' },
+            { title: 'قیمت شفاف', desc: 'بدون هزینه پنهان، قیمت‌گذاری شفاف و فاکتور رسمی برای هر سفارش', icon: Star, color: 'bg-purple-50', iconColor: 'text-purple-600' },
+            { title: 'ردیابی لحظه‌ای', desc: 'از لحظه ثبت تا تحویل، هر مرحله را به‌صورت زنده مشاهده کنید', icon: Search, color: 'bg-rose-50', iconColor: 'text-rose-600' },
+            { title: 'تنوع خدمات', desc: 'بیش از ۱۲۰ خدمت متنوع در دسته‌بندی‌های مختلف، همه در یک پلتفرم', icon: Grid3X3, color: 'bg-cyan-50', iconColor: 'text-cyan-600' },
           ].map((feature, i) => (
             <div key={i} className={`${feature.color} rounded-2xl p-6 border border-gray-100 hover:shadow-lg transition-all`}>
-              <span className="text-3xl mb-3 block">{feature.icon}</span>
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-3 shadow-sm">
+                <feature.icon size={24} className={feature.iconColor} />
+              </div>
               <h3 className="font-bold text-gray-800 mb-2">{feature.title}</h3>
               <p className="text-sm text-gray-600 leading-6">{feature.desc}</p>
             </div>
@@ -258,13 +276,5 @@ export default function Landing() {
         </div>
       </section>
     </div>
-  );
-}
-
-function Grid3X3(props: any) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
-    </svg>
   );
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { services } from '../data/services';
-import { Upload, ArrowRight, CheckCircle, FileText, CreditCard, Clock, Shield } from 'lucide-react';
+import { getServiceIcon } from '../components/Icons';
+import { Upload, ArrowRight, CheckCircle, FileText, CreditCard, Clock, Shield, XCircle } from 'lucide-react';
 
 export default function OrderForm() {
   const { id } = useParams();
@@ -15,7 +16,7 @@ export default function OrderForm() {
   if (!service) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <span className="text-5xl mb-4 block">❌</span>
+        <XCircle size={48} className="mx-auto mb-4 text-gray-300" />
         <h2 className="text-xl font-bold text-gray-700">خدمت مورد نظر یافت نشد</h2>
         <Link to="/services" className="text-primary-600 mt-4 inline-block">بازگشت به لیست خدمات</Link>
       </div>
@@ -90,7 +91,7 @@ export default function OrderForm() {
       {/* Service Header */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
         <div className="flex items-center gap-4">
-          <span className="text-4xl">{service.icon}</span>
+          {(() => { const SIcon = getServiceIcon(service.iconId); return <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center"><SIcon size={28} className="text-primary-600" /></div>; })()}
           <div>
             <h1 className="text-xl font-bold text-gray-800">{service.title}</h1>
             <p className="text-sm text-gray-500">{service.description}</p>
