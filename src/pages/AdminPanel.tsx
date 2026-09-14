@@ -1003,6 +1003,10 @@ function SettingsView({ showToast }: { showToast: (m: string, t?: any) => void }
 function TrainingView() {
   const [activeTab, setActiveTab] = useState<'tutorials' | 'resources'>('tutorials');
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [bookmarkedSites, setBookmarkedSites] = useState<Set<string>>(new Set());
+  const [showBookmarkedOnly, setShowBookmarkedOnly] = useState(false);
 
   const tutorials = [
     {
@@ -1122,6 +1126,7 @@ function TrainingView() {
 
   const resourceCategories = [
     {
+      id: 'government',
       title: 'سایت‌های دولتی و اداری',
       icon: Building2,
       color: 'bg-blue-50 border-blue-200',
@@ -1139,9 +1144,58 @@ function TrainingView() {
         { name: 'سامانه دولت الکترونیک', url: 'https://iran.gov.ir', desc: 'پنجره ملی خدمات دولت هوشمند' },
         { name: 'سامانه یارانه و کالابرگ', url: 'https://yaraneh.gov.ir', desc: 'مشاهده وضعیت یارانه و کالابرگ الکترونیک' },
         { name: 'سامانه املاک و مستغلات', url: 'https://amlak.mrud.ir', desc: 'ثبت و پیگیری املاک و مستغلات' },
+        { name: 'سامانه ثبت شرکت‌ها', url: 'https://irsherkat.ssaa.ir', desc: 'ثبت و تغییرات شرکت‌ها و مؤسسات' },
+        { name: 'سامانه تجارت', url: 'https://ntsw.ir', desc: 'سامانه جامع تجارت - واردات و صادرات' },
+        { name: 'سامانه کد پستی', url: 'https://gnb.post.ir', desc: 'استعلام و دریافت کد پستی' },
+        { name: 'سامانه پست', url: 'https://tracking.post.ir', desc: 'پیگیری مرسولات پستی' },
+        { name: 'سامانه نیروی انتظامی', url: 'https://rahvar120.ir', desc: 'خدمات راهور و تخلفات رانندگی' },
+        { name: 'سامانه خلافی خودرو', url: 'https://rahvar120.ir', desc: 'مشاهده و پرداخت خلافی خودرو' },
+        { name: 'سامانه عوارض شهرداری', url: 'https://tehran.ir', desc: 'پرداخت عوارض نوسازی و پسماند' },
+        { name: 'سامانه آب و فاضلاب', url: 'https://abfa.ir', desc: 'مشاهده و پرداخت قبض آب' },
+        { name: 'سامانه برق', url: 'https://tavanir.org.ir', desc: 'مشاهده و پرداخت قبض برق' },
+        { name: 'سامانه گاز', url: 'https://nigc.ir', desc: 'مشاهده و پرداخت قبض گاز' },
+        { name: 'سامانه مخابرات', url: 'https://tci.ir', desc: 'مشاهده و پرداخت قبض تلفن ثابت' },
+        { name: 'سامانه سازمان بازرسی', url: 'https://sazmanbazresi.ir', desc: 'ثبت شکایات و گزارش‌های بازرسی' },
+        { name: 'سامانه دیوان عدالت اداری', url: 'https://divan-edalat.ir', desc: 'ثبت دادخواست در دیوان عدالت اداری' },
+        { name: 'سامانه سازمان تعزیرات', url: 'https://tazirat.gov.ir', desc: 'ثبت شکایات تعزیراتی' },
+        { name: 'سامانه سازمان حمایت', url: 'https://taazirat135.ir', desc: 'گزارش تخلفات و گران‌فروشی' },
+        { name: 'سامانه وزارت کار', url: 'https://mcls.gov.ir', desc: 'خدمات وزارت کار و امور اجتماعی' },
+        { name: 'سامانه کاریابی', url: 'https://kar.mcls.gov.ir', desc: 'ثبت‌نام و کاریابی الکترونیکی' },
+        { name: 'سامانه بیمه بیکاری', url: 'https://bimehbikari.mcls.gov.ir', desc: 'ثبت درخواست بیمه بیکاری' },
+        { name: 'سامانه وزارت بهداشت', url: 'https://behdasht.gov.ir', desc: 'خدمات وزارت بهداشت و درمان' },
+        { name: 'سامانه غذا و دارو', url: 'https://fda.gov.ir', desc: 'استعلام مجوزهای غذا و دارو' },
+        { name: 'سامانه واکسیناسیون', url: 'https://vcr.salamat.gov.ir', desc: 'کارت واکسیناسیون الکترونیک' },
+        { name: 'سامانه نسخه الکترونیک', url: 'https://tamin.ir/Content3/News/Show/16534', desc: 'دریافت نسخه الکترونیکی' },
+        { name: 'سامانه وزارت راه', url: 'https://rmto.ir', desc: 'خدمات وزارت راه و شهرسازی' },
+        { name: 'سامانه مسکن', url: 'https://mehr housing.mrud.ir', desc: 'ثبت‌نام مسکن ملی و مهر' },
+        { name: 'سامانه وام مسکن', url: 'https://bank-maskan.ir', desc: 'درخواست وام مسکن' },
+        { name: 'سامانه وزارت جهاد کشاورزی', url: 'https://maj.ir', desc: 'خدمات وزارت جهاد کشاورزی' },
+        { name: 'سامانه نظام مهندسی', url: 'https://iran-eng.ir', desc: 'سازمان نظام مهندسی ساختمان' },
+        { name: 'سامانه کانون وکلا', url: 'https://kanoon-vokala.ir', desc: 'کانون وکلای دادگستری' },
+        { name: 'سامانه قوه قضاییه', url: 'https:// judiciary.ir', desc: 'پورتال قوه قضاییه' },
+        { name: 'سامانه سازمان زندان‌ها', url: 'https://prison.ir', desc: 'ملاقات زندانیان و پیگیری' },
+        { name: 'سامانه سازمان اوقاف', url: 'https://awqaf.ir', desc: 'خدمات سازمان اوقاف و امور خیریه' },
+        { name: 'سامانه حج و زیارت', url: 'https://haj.ir', desc: 'ثبت‌نام کاروان‌های حج و زیارت' },
+        { name: 'سامانه هلال احمر', url: 'https://rcs.ir', desc: 'خدمات هلال احمر و امداد' },
+        { name: 'سامانه سازمان محیط زیست', url: 'https://doe.ir', desc: 'خدمات سازمان حفاظت محیط زیست' },
+        { name: 'سامانه میراث فرهنگی', url: 'https://chtb.ir', desc: 'سازمان میراث فرهنگی و گردشگری' },
+        { name: 'سامانه وزارت ورزش', url: 'https://moss.gov.ir', desc: 'خدمات وزارت ورزش و جوانان' },
+        { name: 'سامانه سازمان جوانان', url: 'https://youth.gov.ir', desc: 'خدمات سازمان ملی جوانان' },
+        { name: 'سامانه بنیاد شهید', url: 'https://bonyadshahid.ir', desc: 'خدمات بنیاد شهید و ایثارگران' },
+        { name: 'سامانه بهزیستی', url: 'https://behziستی.ir', desc: 'خدمات سازمان بهزیستی' },
+        { name: 'سامانه کمیته امداد', url: 'https://emdad.ir', desc: 'خدمات کمیته امداد امام خمینی' },
+        { name: 'سامانه سازمان تبلیغات', url: 'https://sazman.ir', desc: 'سازمان تبلیغات اسلامی' },
+        { name: 'سامانه فرهنگستان زبان', url: 'https://persianacademy.ir', desc: 'فرهنگستان زبان و ادب فارسی' },
+        { name: 'سامانه کتابخانه ملی', url: 'https://nlai.ir', desc: 'کتابخانه ملی جمهوری اسلامی' },
+        { name: 'سامانه صدا و سیما', url: 'https://irib.ir', desc: 'سازمان صدا و سیمای جمهوری اسلامی' },
+        { name: 'سامانه خبرگزاری ایرنا', url: 'https://irna.ir', desc: 'خبرگزاری جمهوری اسلامی' },
+        { name: 'سامانه شهرداری تهران', url: 'https://tehran.ir', desc: 'خدمات شهرداری تهران' },
+        { name: 'سامانه ۱۳۷', url: 'https://137.tehran.ir', desc: 'سامانه رسیدگی به شکایات شهری' },
+        { name: 'سامانه نوسازی', url: 'https://nvsazi.tehran.ir', desc: 'سازمان نوسازی تهران' },
       ]
     },
     {
+      id: 'education',
       title: 'سایت‌های آموزشی و دانشگاهی',
       icon: GraduationCap,
       color: 'bg-purple-50 border-purple-200',
@@ -1154,9 +1208,19 @@ function TrainingView() {
         { name: 'سامانه دانشگاه آزاد', url: 'https://azmoon.org', desc: 'ثبت‌نام و امور آموزشی دانشگاه آزاد' },
         { name: 'سامانه آموزش و پرورش', url: 'https://medu.ir', desc: 'خدمات آموزش و پرورش و ثبت‌نام مدارس' },
         { name: 'سامانه پژوهشگاه علوم انسانی', url: 'https://ihcs.ac.ir', desc: 'آزمون‌های تحصیلات تکمیلی علوم انسانی' },
+        { name: 'سامانه دانشگاه تهران', url: 'https://ut.ac.ir', desc: 'پورتال دانشگاه تهران' },
+        { name: 'سامانه دانشگاه شریف', url: 'https://sharif.edu', desc: 'پورتال دانشگاه صنعتی شریف' },
+        { name: 'سامانه دانشگاه امیرکبیر', url: 'https://aut.ac.ir', desc: 'پورتال دانشگاه صنعتی امیرکبیر' },
+        { name: 'سامانه وزارت بهداشت (آموزش)', url: 'https://edc.behdasht.gov.ir', desc: 'معاونت آموزشی وزارت بهداشت' },
+        { name: 'سامانه سجاد', url: 'https://sajjad.org', desc: 'سامانه خدمات دانشجویی' },
+        { name: 'سامانه پژوهشیار', url: 'https://pajouheshyar.msrt.ir', desc: 'سامانه ثبت پایان‌نامه و پژوهش' },
+        { name: 'سامانه علوم پزشکی', url: 'https://behdasht.gov.ir', desc: 'وزارت بهداشت، درمان و آموزش پزشکی' },
+        { name: 'سامانه دانشگاه پیام نور', url: 'https://pnu.ac.ir', desc: 'دانشگاه پیام نور' },
+        { name: 'سامانه دانشگاه غیرانتفاعی', url: 'https://nonprofit.msrt.ir', desc: 'دفتر گسترش دانشگاه‌های غیرانتفاعی' },
       ]
     },
     {
+      id: 'financial',
       title: 'سایت‌های بیمه و مالی',
       icon: CreditCard,
       color: 'bg-emerald-50 border-emerald-200',
@@ -1169,9 +1233,23 @@ function TrainingView() {
         { name: 'فرابورس ایران', url: 'https://ifb.ir', desc: 'اطلاعات بازار فرابورس و سهام' },
         { name: 'بورس اوراق بهادار تهران', url: 'https://tse.ir', desc: 'اطلاعات بازار بورس و معاملات' },
         { name: 'سامانه سجام', url: 'https://sejam.ir', desc: 'ثبت‌نام در سامانه جامع اطلاعات مشتریان' },
+        { name: 'بیمه آسیا', url: 'https://asiainsurance.ir', desc: 'شرکت بیمه آسیا' },
+        { name: 'بیمه دانا', url: 'https://dana.ir', desc: 'شرکت بیمه دانا' },
+        { name: 'بیمه پاسارگاد', url: 'https://bpi.ir', desc: 'شرکت بیمه پاسارگاد' },
+        { name: 'بیمه معلم', url: 'https://moalleminsurance.ir', desc: 'شرکت بیمه معلم' },
+        { name: 'بیمه کوثر', url: 'https://kosarinsurance.ir', desc: 'شرکت بیمه کوثر' },
+        { name: 'بیمه سامان', url: 'https://samansurance.ir', desc: 'شرکت بیمه سامان' },
+        { name: 'بیمه پارسیان', url: 'https://parsianinsurance.ir', desc: 'شرکت بیمه پارسیان' },
+        { name: 'بیمه ملت', url: 'https://melinsurance.ir', desc: 'شرکت بیمه ملت' },
+        { name: 'سامانه بیمه‌نامه الکترونیک', url: 'https://centinsu.co.ir', desc: 'استعلام بیمه‌نامه‌های الکترونیک' },
+        { name: 'بانک مرکزی', url: 'https://cbi.ir', desc: 'بانک مرکزی جمهوری اسلامی ایران' },
+        { name: 'سامانه شتاب', url: 'https://shaparak.ir', desc: 'شبکه الکترونیکی پرداخت کارتی' },
+        { name: 'سامانه صیاد', url: 'https://sayad24.ir', desc: 'ثبت و استعلام چک‌های صیادی' },
+        { name: 'سامانه نیما', url: 'https://nima.co.ir', desc: 'سامانه معاملات ارزی' },
       ]
     },
     {
+      id: 'payment',
       title: 'درگاه‌های پرداخت',
       icon: CreditCard,
       color: 'bg-amber-50 border-amber-200',
@@ -1184,9 +1262,18 @@ function TrainingView() {
         { name: 'پی‌آفیس', url: 'https://payoffice.ir', desc: 'درگاه پرداخت و خدمات مالی' },
         { name: 'سامان کیش', url: 'https://samankish.com', desc: 'درگاه پرداخت بانکی سامان' },
         { name: 'پارسیان پال', url: 'https://parsianpal.com', desc: 'درگاه پرداخت بانک پارسیان' },
+        { name: 'آسان‌پرداخت', url: 'https://asanpardakht.ir', desc: 'درگاه پرداخت آسان‌پرداخت' },
+        { name: 'به‌پرداخت ملت', url: 'https://behpardakht.com', desc: 'درگاه پرداخت بانک ملت' },
+        { name: 'پرداخت نوین آرین', url: 'https://pna.co.ir', desc: 'درگاه پرداخت نوین آرین' },
+        { name: 'کارت‌به‌کارت', url: 'https://cartbeCart.ir', desc: 'سرویس کارت به کارت' },
+        { name: 'پی‌استار', url: 'https://paystar.ir', desc: 'درگاه پرداخت پی‌استار' },
+        { name: 'وندار', url: 'https://vandar.io', desc: 'درگاه پرداخت وندار' },
+        { name: 'زیبال', url: 'https://zibal.ir', desc: 'درگاه پرداخت زیبال' },
+        { name: 'آقای پرداخت', url: 'https://aqayepardakht.ir', desc: 'درگاه پرداخت آقای پرداخت' },
       ]
     },
     {
+      id: 'sms',
       title: 'سرویس‌های پیامک و ارتباطات',
       icon: Phone,
       color: 'bg-rose-50 border-rose-200',
@@ -1196,11 +1283,18 @@ function TrainingView() {
         { name: 'فراز اس‌ام‌اس', url: 'https://farazsms.com', desc: 'پنل ارسال پیامک انبوه' },
         { name: 'ملی پیامک', url: 'https://melipayamak.com', desc: 'سرویس پیامک و تماس صوتی' },
         { name: 'sms.ir', url: 'https://sms.ir', desc: 'سرویس ارسال پیامک حرفه‌ای' },
-        { name: 'مدیاوا', url: 'https://mediawa.com', desc: 'سرویس پیامک و通知' },
+        { name: 'مدیاوا', url: 'https://mediawa.com', desc: 'سرویس پیامک و اطلاع‌رسانی' },
         { name: 'قیطره', url: 'https://ghatreh.com', desc: 'سرویس پیامک و اطلاع‌رسانی' },
+        { name: 'نیک‌تلگرام', url: 'https://niksms.com', desc: 'پنل ارسال پیامک نیک‌تلگرام' },
+        { name: 'اس‌ام‌اس‌بان', url: 'https://smsban.ir', desc: 'سرویس ارسال پیامک انبوه' },
+        { name: 'ای‌اس‌ام‌اس', url: 'https://esms.ir', desc: 'سرویس پیامک ای‌اس‌ام‌اس' },
+        { name: 'پیام‌گستر', url: 'https://payamgostar.net', desc: 'پنل پیامک پیام‌گستر' },
+        { name: 'وب‌اس‌ام‌اس', url: 'https://websms.ir', desc: 'سرویس پیامک وب‌اس‌ام‌اس' },
+        { name: 'اول‌اس‌ام‌اس', url: 'https://01sms.ir', desc: 'پنل ارسال پیامک اول‌اس‌ام‌اس' },
       ]
     },
     {
+      id: 'auth',
       title: 'سرویس‌های احراز هویت',
       icon: Shield,
       color: 'bg-indigo-50 border-indigo-200',
@@ -1211,9 +1305,15 @@ function TrainingView() {
         { name: 'احراز هویت ایران', url: 'https://evidencement.ir', desc: 'احراز هویت آنلاین با کارت ملی' },
         { name: 'نوین‌احراز', url: 'https://novinera.com', desc: 'سرویس احراز هویت و KYC' },
         { name: 'شاهکار (ثبت احوال)', url: 'https://shahkar.gov.ir', desc: 'سامانه تطبیق اطلاعات هویتی' },
+        { name: 'هویت‌سنج', url: 'https://hoviyatsanj.ir', desc: 'سرویس احراز هویت هویت‌سنج' },
+        { name: 'آی‌دی‌وای', url: 'https://idev.ir', desc: 'سرویس احراز هویت دیجیتال' },
+        { name: 'تصحیح', url: 'https://tashih.ir', desc: 'سرویس تطبیق و احراز هویت' },
+        { name: 'احراز هویت پلیس', url: 'https://epolice.ir', desc: 'سامانه احراز هویت نیروی انتظامی' },
+        { name: 'سرویس OCR', url: 'https://ocr.ir', desc: 'تشخیص متن از تصویر کارت ملی' },
       ]
     },
     {
+      id: 'cloud',
       title: 'سرویس‌های ابری و زیرساخت',
       icon: Server,
       color: 'bg-cyan-50 border-cyan-200',
@@ -1225,9 +1325,16 @@ function TrainingView() {
         { name: 'نت‌افراز', url: 'https://netafraz.com', desc: 'هاستینگ و سرور مجازی' },
         { name: 'سون‌هاست', url: 'https://sonhost.com', desc: 'هاستینگ اشتراکی و حرفه‌ای' },
         { name: 'میزبان‌فا', url: 'https://mizbanfa.net', desc: 'هاستینگ و دامنه' },
+        { name: 'لیارا', url: 'https://liara.ir', desc: 'پلتفرم ابری لیارا' },
+        { name: 'پونیشا', url: 'https://ponisha.ir', desc: 'پلتفرم فریلنسری و پروژه' },
+        { name: 'دیجی‌کالا (زیرساخت)', url: 'https://digikala.com', desc: 'زیرساخت فنی دیجی‌کالا' },
+        { name: 'سرویس CDN', url: 'https://cdn.ir', desc: 'شبکه توزیع محتوا' },
+        { name: 'دامنه ایرنیک', url: 'https://nic.ir', desc: 'مرکز ثبت دامنه‌های ملی' },
+        { name: 'ایران‌دامین', url: 'https://irandomain.com', desc: 'ثبت و مدیریت دامنه' },
       ]
     },
     {
+      id: 'tools',
       title: 'ابزارها و منابع مدیریتی',
       icon: Lightbulb,
       color: 'bg-orange-50 border-orange-200',
@@ -1239,6 +1346,16 @@ function TrainingView() {
         { name: 'سامانه ثبت شرکت‌ها', url: 'https://irsherkat.ssaa.ir', desc: 'ثبت و تغییرات شرکت‌ها' },
         { name: 'سامانه تجارت', url: 'https://ntsw.ir', desc: 'سامانه جامع تجارت - واردات و صادرات' },
         { name: 'اتاق بازرگانی', url: 'https://ccima.ir', desc: 'اتاق بازرگانی، صنایع، معادن و کشاورزی' },
+        { name: 'اتاق اصناف', url: 'https://ccima.ir', desc: 'اتاق اصناف ایران' },
+        { name: 'سامانه اینماد', url: 'https://enamad.ir', desc: 'نماد اعتماد الکترونیکی' },
+        { name: 'سامانه ساماندهی', url: 'https://samandehi.ir', desc: 'ساماندهی سایت‌های اینترنتی' },
+        { name: 'گوگل آنالیتیکس', url: 'https://analytics.google.com', desc: 'تحلیل ترافیک وب‌سایت' },
+        { name: 'سرچ کنسول', url: 'https://search.google.com/search-console', desc: 'مدیریت سئو و عملکرد سایت' },
+        { name: 'جی‌تی‌متریکس', url: 'https://gtmetrix.com', desc: 'آنالیز سرعت وب‌سایت' },
+        { name: 'تrello', url: 'https://trello.com', desc: 'مدیریت پروژه و تسک' },
+        { name: 'اسلک', url: 'https://slack.com', desc: 'ارتباطات تیمی' },
+        { name: 'گوگل فرم', url: 'https://docs.google.com/forms', desc: 'ساخت فرم آنلاین' },
+        { name: 'درایو گوگل', url: 'https://drive.google.com', desc: 'ذخیره‌سازی ابری' },
       ]
     },
   ];
@@ -1401,48 +1518,149 @@ function TrainingView() {
             </div>
           </div>
 
-          {/* Resource Categories */}
-          <div className="space-y-4">
-            {resourceCategories.map((category, idx) => (
-              <div key={idx} className={`rounded-2xl border ${category.color} overflow-hidden`}>
-                <div className="p-4 flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${category.color.replace('bg-', 'bg-').replace('50', '100')}`}>
-                    <category.icon size={20} className={category.iconColor} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-800">{category.title}</h3>
-                    <p className="text-xs text-gray-500">{category.sites.length} سایت</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-b-2xl">
-                  <div className="divide-y divide-gray-50">
-                    {category.sites.map((site, i) => (
-                      <a
-                        key={i}
-                        href={site.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 hover:bg-gray-50 transition group"
-                      >
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary-50 transition">
-                          <Globe size={14} className="text-gray-500 group-hover:text-primary-600 transition" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-800 text-sm">{site.name}</h4>
-                            <ExternalLink size={12} className="text-gray-400 shrink-0" />
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">{site.desc}</p>
-                          <p className="text-xs text-primary-600 mt-0.5 font-mono truncate">{site.url}</p>
-                        </div>
-                        <ChevronLeft size={16} className="text-gray-300 group-hover:text-primary-500 transition shrink-0" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
+          {/* Search and Filter Bar */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm sticky top-0 z-10">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="جستجو در سایت‌ها..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition"
+                />
               </div>
-            ))}
+              <button
+                onClick={() => setShowBookmarkedOnly(!showBookmarkedOnly)}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                  showBookmarkedOnly ? 'bg-amber-100 text-amber-700 border border-amber-300' : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <Bookmark size={16} className={showBookmarkedOnly ? 'fill-amber-500' : ''} />
+                نشان‌های من ({bookmarkedSites.size})
+              </button>
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setSelectedCategory('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                  selectedCategory === 'all' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                همه ({resourceCategories.reduce((acc, cat) => acc + cat.sites.length, 0)})
+              </button>
+              {resourceCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                    selectedCategory === cat.id ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <cat.icon size={12} />
+                  {cat.title.replace('سایت‌های ', '').replace('سرویس‌های ', '')} ({cat.sites.length})
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Filtered Sites */}
+          <div className="space-y-4">
+            {resourceCategories
+              .filter(cat => selectedCategory === 'all' || cat.id === selectedCategory)
+              .map((category) => {
+                const filteredSites = category.sites.filter(site => {
+                  const matchesSearch = site.name.includes(searchQuery) || site.desc.includes(searchQuery) || site.url.includes(searchQuery);
+                  const matchesBookmark = !showBookmarkedOnly || bookmarkedSites.has(site.url);
+                  return matchesSearch && matchesBookmark;
+                });
+
+                if (filteredSites.length === 0) return null;
+
+                return (
+                  <div key={category.id} className={`rounded-2xl border ${category.color} overflow-hidden`}>
+                    <div className="p-4 flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white/50`}>
+                        <category.icon size={20} className={category.iconColor} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-800">{category.title}</h3>
+                        <p className="text-xs text-gray-500">{filteredSites.length} سایت</p>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-b-2xl">
+                      <div className="grid gap-2 p-3">
+                        {filteredSites.map((site, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition group border border-gray-100"
+                          >
+                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary-50 transition">
+                              <Globe size={16} className="text-gray-500 group-hover:text-primary-600 transition" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-gray-800 text-sm">{site.name}</h4>
+                                <a
+                                  href={site.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-gray-400 hover:text-primary-600 transition"
+                                >
+                                  <ExternalLink size={12} />
+                                </a>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">{site.desc}</p>
+                              <p className="text-xs text-primary-600 mt-0.5 font-mono truncate">{site.url}</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const newBookmarks = new Set(bookmarkedSites);
+                                if (newBookmarks.has(site.url)) {
+                                  newBookmarks.delete(site.url);
+                                } else {
+                                  newBookmarks.add(site.url);
+                                }
+                                setBookmarkedSites(newBookmarks);
+                              }}
+                              className={`p-2 rounded-lg transition ${
+                                bookmarkedSites.has(site.url) ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400 hover:bg-amber-50 hover:text-amber-500'
+                              }`}
+                              title={bookmarkedSites.has(site.url) ? 'حذف از نشان‌ها' : 'افزودن به نشان‌ها'}
+                            >
+                              <Bookmark size={16} className={bookmarkedSites.has(site.url) ? 'fill-amber-500' : ''} />
+                            </button>
+                            <a
+                              href={site.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition"
+                              title="باز کردن سایت"
+                            >
+                              <ChevronLeft size={16} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {searchQuery && resourceCategories.every(cat => 
+            cat.sites.every(site => 
+              !site.name.includes(searchQuery) && !site.desc.includes(searchQuery) && !site.url.includes(searchQuery)
+            )
+          ) && (
+            <div className="text-center py-12">
+              <Search size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500">سایتی با این مشخصات یافت نشد</p>
+            </div>
+          )}
 
           {/* Summary Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1459,8 +1677,8 @@ function TrainingView() {
               <p className="text-xs text-gray-500 mt-1">آموزش</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
-              <p className="text-2xl font-bold text-amber-600">{tutorials.reduce((acc, t) => acc + t.steps.length, 0)}</p>
-              <p className="text-xs text-gray-500 mt-1">مرحله آموزشی</p>
+              <p className="text-2xl font-bold text-amber-600">{bookmarkedSites.size}</p>
+              <p className="text-xs text-gray-500 mt-1">نشان‌شده</p>
             </div>
           </div>
         </div>
