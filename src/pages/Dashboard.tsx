@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Wallet, FileText, MessageCircle, Bell, Settings, CreditCard, Download, Clock, CheckCircle, AlertCircle, TrendingUp, Plus, Send, Save } from 'lucide-react';
+import { getAllOrderStatuses, onOrderStatusUpdate, getStatusLabel, getStatusColor } from '../utils/orderManagement';
+import type { OrderStatus } from '../utils/orderManagement';
 
 interface OrderData {
   trackingCode: string;
@@ -7,7 +9,7 @@ interface OrderData {
   serviceTitle: string;
   formData: Record<string, string>;
   submittedAt: string;
-  status: string;
+  status: 'pending' | 'processing' | 'review' | 'completed' | 'rejected';
   price: string;
 }
 
@@ -46,20 +48,7 @@ export default function Dashboard() {
 
   // Load data from localStorage
   useEffect(() => {
-    // Load orders
-    const allOrders: OrderData[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('order_') && key?.endsWith('_info')) {
-        const orderInfo = JSON.parse(localStorage.getItem(key) || '{}');
-        allOrders.push({
-          ...orderInfo,
-          status: 'processing',
-          price: '۵۰,۰۰۰ تومان',
-        });
-      }
-    }
-    setOrders(allOrders);
+    loadOrders();
 
     // Load tickets
     const savedTickets = JSON.parse(localStorage.getItem('user_tickets') || '[]');
@@ -80,7 +69,40 @@ export default function Dashboard() {
     // Load notifications
     const savedNotifications = JSON.parse(localStorage.getItem('user_notifications') || '[]');
     setNotifications(savedNotifications);
+
+    // Listen for real-time updates
+    const unsubscribe = onOrderStatusUpdate(() => {
+      loadOrders();
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const loadOrders = () => {
+    const allOrders: OrderData[] = [];
+    const statuses = getAllOrderStatuses();
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('order_') && key?.endsWith('_info')) {
+        const orderInfo = JSON.parse(localStorage.getItem(key) || '{}');
+        const trackingCode = orderInfo.trackingCode;
+        
+        // Get status
+        const statusData = statuses.find(s => s.trackingCode === trackingCode);
+        
+        allOrders.push({
+          ...orderInfo,
+          status: statusData?.status || 'pending',
+          price: '۵۰,۰۰۰ تومان',
+        });
+      }
+    }
+    
+    // Sort by date (newest first)
+    allOrders.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    setOrders(allOrders);
+  };
 
   const createTicket = () => {
     if (!newTicket.title || !newTicket.message) return;
@@ -202,30 +224,47 @@ export default function Dashboard() {
             </div>
             {orders.length > 0 ? (
               <div className="divide-y divide-gray-50">
-                {orders.map((order, idx) => (
-                  <div key={idx} className="p-4 hover:bg-gray-50 transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-                          <Clock size={18} />
+                {orders.map((order, idx) => {
+                  const statusData = getAllOrderStatuses().find(s => s.trackingCode === order.trackingCode);
+                  const progress = statusData?.progress || 20;
+                  
+                  return (
+                    <div key={idx} className="p-4 hover:bg-gray-50 transition">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            order.status === 'completed' ? 'bg-emerald-100 text-emerald-600' :
+                            order.status === 'processing' ? 'bg-blue-100 text-blue-600' :
+                            order.status === 'review' ? 'bg-purple-100 text-purple-600' :
+                            order.status === 'rejected' ? 'bg-rose-100 text-rose-600' :
+                            'bg-amber-100 text-amber-600'
+                          }`}>
+                            {order.status === 'completed' && <CheckCircle size={18} />}
+                            {order.status === 'processing' && <Clock size={18} />}
+                            {order.status === 'review' && <AlertCircle size={18} />}
+                            {order.status === 'pending' && <Clock size={18} />}
+                            {order.status === 'rejected' && <AlertCircle size={18} />}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800 text-sm">{order.serviceTitle}</p>
+                            <p className="text-xs text-gray-500 font-mono">{order.trackingCode}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-800 text-sm">{order.serviceTitle}</p>
-                          <p className="text-xs text-gray-500 font-mono">{order.trackingCode}</p>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-gray-800">{order.price}</p>
+                          <p className="text-xs text-gray-500">{getStatusLabel(order.status)}</p>
                         </div>
                       </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold text-gray-800">{order.price}</p>
-                        <p className="text-xs text-gray-500">{new Date(order.submittedAt).toLocaleDateString('fa-IR')}</p>
+                      <div className="mt-2">
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${
+                            order.status === 'rejected' ? 'bg-rose-500' : 'bg-primary-500'
+                          }`} style={{ width: `${progress}%` }}></div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary-500 rounded-full" style={{ width: '60%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-12 text-center">

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { services } from '../data/services';
 import { getServiceIcon } from '../components/Icons';
 import { Upload, ArrowRight, CheckCircle, FileText, CreditCard, Clock, Shield, XCircle, File, X, Eye } from 'lucide-react';
+import { initializeOrderStatus } from '../utils/orderManagement';
 
 interface UploadedFile {
   name: string;
@@ -110,6 +111,10 @@ export default function OrderForm() {
       submittedAt: new Date().toISOString(),
     };
     localStorage.setItem(`order_${trackingCode}_info`, JSON.stringify(orderInfo));
+    
+    // Initialize order status for tracking
+    initializeOrderStatus(trackingCode);
+    
     setSubmitted(true);
   };
 

@@ -1,14 +1,22 @@
-import { useState } from 'react';
-import { sampleOrders } from '../data/services';
-import { Search, Clock, CheckCircle, AlertCircle, Loader, XCircle, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Clock, CheckCircle, AlertCircle, Loader, XCircle, Package, FileText } from 'lucide-react';
+import { getOrderStatus, getAllOrderStatuses, onOrderStatusUpdate, getStatusLabel, getStatusColor } from '../utils/orderManagement';
+import type { OrderStatus } from '../utils/orderManagement';
 
-const statusMap = {
-  pending: { label: 'در انتظار بررسی', icon: Clock, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  processing: { label: 'در حال پردازش', icon: Loader, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-  review: { label: 'در حال بررسی', icon: AlertCircle, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  completed: { label: 'تکمیل شده', icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-  rejected: { label: 'رد شده', icon: XCircle, color: 'text-rose-600 bg-rose-50 border-rose-200' },
-};
+interface OrderInfo {
+  trackingCode: string;
+  serviceId: string;
+  serviceTitle: string;
+  formData: Record<string, string>;
+  submittedAt: string;
+}
+
+interface OrderWithStatus extends OrderInfo {
+  status: OrderStatus['status'];
+  progress: number;
+  operator?: string;
+  updatedAt: string;
+}
 
 const timelineSteps = [
   { label: 'ثبت سفارش', desc: 'سفارش شما با موفقیت ثبت شد' },
@@ -20,22 +28,84 @@ const timelineSteps = [
 
 export default function Tracking() {
   const [searchCode, setSearchCode] = useState('');
-  const [activeOrder, setActiveOrder] = useState(sampleOrders[1]);
-  const [searched, setSearched] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<OrderWithStatus | null>(null);
+  const [allOrders, setAllOrders] = useState<OrderWithStatus[]>([]);
+
+  // Load all orders from localStorage
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  // Listen for real-time updates
+  useEffect(() => {
+    const unsubscribe = onOrderStatusUpdate((updatedStatus) => {
+      // Update the active order if it matches
+      if (activeOrder && activeOrder.trackingCode === updatedStatus.trackingCode) {
+        setActiveOrder(prev => prev ? {
+          ...prev,
+          status: updatedStatus.status,
+          progress: updatedStatus.progress,
+          operator: updatedStatus.operator,
+          updatedAt: updatedStatus.updatedAt,
+        } : null);
+      }
+      
+      // Reload all orders
+      loadOrders();
+    });
+
+    return () => unsubscribe();
+  }, [activeOrder]);
+
+  const loadOrders = () => {
+    const orders: OrderWithStatus[] = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('order_') && key?.endsWith('_info')) {
+        const orderInfo: OrderInfo = JSON.parse(localStorage.getItem(key) || '{}');
+        const trackingCode = orderInfo.trackingCode;
+        
+        // Get status
+        const statusData = getOrderStatus(trackingCode);
+        
+        if (statusData) {
+          orders.push({
+            ...orderInfo,
+            status: statusData.status,
+            progress: statusData.progress,
+            operator: statusData.operator,
+            updatedAt: statusData.updatedAt,
+          });
+        }
+      }
+    }
+    
+    // Sort by date (newest first)
+    orders.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    setAllOrders(orders);
+  };
 
   const handleSearch = () => {
-    if (searchCode.trim()) {
-      setSearched(true);
+    if (!searchCode.trim()) return;
+    
+    const order = allOrders.find(o => o.trackingCode === searchCode.trim());
+    if (order) {
+      setActiveOrder(order);
+    } else {
+      setActiveOrder(null);
     }
   };
 
-  const currentStepIndex = Math.floor((activeOrder.progress / 100) * (timelineSteps.length - 1));
+  const currentStepIndex = activeOrder 
+    ? Math.floor((activeOrder.progress / 100) * (timelineSteps.length - 1))
+    : 0;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">پیگیری سفارش</h1>
-        <p className="text-gray-500">وضعیت سفارش خود را لحظه‌به‌لحه مشاهده کنید</p>
+        <p className="text-gray-500">وضعیت سفارش خود را لحظه‌به‌لحظه مشاهده کنید</p>
       </div>
 
       {/* Search */}
@@ -45,9 +115,10 @@ export default function Tracking() {
             <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="کد رهگیری سفارش را وارد کنید (مثال: KNT-1403-001567)"
+              placeholder="کد رهگیری سفارش را وارد کنید"
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full pr-10 pl-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             />
           </div>
@@ -60,7 +131,8 @@ export default function Tracking() {
         </div>
       </div>
 
-      {(searched || true) && activeOrder && (
+      {/* Active Order Display */}
+      {activeOrder && (
         <div className="space-y-6">
           {/* Order Info Card */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -72,9 +144,13 @@ export default function Tracking() {
                 </div>
                 <p className="text-sm text-gray-500">کد رهگیری: <span className="font-mono font-bold text-primary-700">{activeOrder.trackingCode}</span></p>
               </div>
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${statusMap[activeOrder.status].color}`}>
-                {(() => { const Icon = statusMap[activeOrder.status].icon; return <Icon size={14} />; })()}
-                {statusMap[activeOrder.status].label}
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${getStatusColor(activeOrder.status)}`}>
+                {activeOrder.status === 'pending' && <Clock size={14} />}
+                {activeOrder.status === 'processing' && <Loader size={14} />}
+                {activeOrder.status === 'review' && <AlertCircle size={14} />}
+                {activeOrder.status === 'completed' && <CheckCircle size={14} />}
+                {activeOrder.status === 'rejected' && <XCircle size={14} />}
+                {getStatusLabel(activeOrder.status)}
               </div>
             </div>
 
@@ -86,7 +162,9 @@ export default function Tracking() {
               </div>
               <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-l from-primary-500 to-primary-600 rounded-full transition-all duration-1000"
+                  className={`h-full rounded-full transition-all duration-1000 ${
+                    activeOrder.status === 'rejected' ? 'bg-rose-500' : 'bg-gradient-to-l from-primary-500 to-primary-600'
+                  }`}
                   style={{ width: `${activeOrder.progress}%` }}
                 ></div>
               </div>
@@ -97,8 +175,8 @@ export default function Tracking() {
               <div className="absolute right-5 top-0 bottom-0 w-0.5 bg-gray-200"></div>
               <div className="space-y-6">
                 {timelineSteps.map((step, i) => {
-                  const isCompleted = i <= currentStepIndex;
-                  const isCurrent = i === currentStepIndex;
+                  const isCompleted = i <= currentStepIndex && activeOrder.status !== 'rejected';
+                  const isCurrent = i === currentStepIndex && activeOrder.status !== 'rejected' && activeOrder.status !== 'completed';
                   return (
                     <div key={i} className="relative flex gap-4">
                       <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center border-2 ${
@@ -112,7 +190,7 @@ export default function Tracking() {
                           <span className="text-xs text-gray-400">{i + 1}</span>
                         )}
                       </div>
-                      <div className={`flex-1 pb-2 ${isCurrent ? '' : ''}`}>
+                      <div className="flex-1 pb-2">
                         <h4 className={`font-semibold text-sm ${isCompleted ? 'text-gray-800' : 'text-gray-400'}`}>
                           {step.label}
                           {isCurrent && <span className="inline-block mr-2 text-xs text-primary-600">(مرحله فعلی)</span>}
@@ -136,44 +214,87 @@ export default function Tracking() {
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl border border-gray-100 p-4">
               <p className="text-xs text-gray-500 mb-1">تاریخ ثبت</p>
-              <p className="font-bold text-gray-800">{activeOrder.date}</p>
+              <p className="font-bold text-gray-800">{new Date(activeOrder.submittedAt).toLocaleDateString('fa-IR')}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <p className="text-xs text-gray-500 mb-1">مبلغ پرداختی</p>
-              <p className="font-bold text-gray-800">{activeOrder.price}</p>
+              <p className="text-xs text-gray-500 mb-1">اپراتور</p>
+              <p className="font-bold text-gray-800">{activeOrder.operator || 'تخصیص نیافته'}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-4">
-              <p className="text-xs text-gray-500 mb-1">زمان تقریبی تحویل</p>
-              <p className="font-bold text-gray-800">۲ ساعت دیگر</p>
+              <p className="text-xs text-gray-500 mb-1">آخرین بروزرسانی</p>
+              <p className="font-bold text-gray-800">{new Date(activeOrder.updatedAt).toLocaleDateString('fa-IR')}</p>
             </div>
           </div>
 
-          {/* Quick Orders */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-4">سفارش‌های اخیر شما</h3>
-            <div className="space-y-3">
-              {sampleOrders.map(order => (
-                <button
-                  key={order.id}
-                  onClick={() => { setActiveOrder(order); setSearched(true); }}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl border transition text-right ${
-                    activeOrder.id === order.id ? 'border-primary-300 bg-primary-50' : 'border-gray-100 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${statusMap[order.status].color}`}>
-                      {(() => { const Icon = statusMap[order.status].icon; return <Icon size={14} />; })()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{order.serviceTitle}</p>
-                      <p className="text-xs text-gray-500 font-mono">{order.trackingCode}</p>
-                    </div>
+          {/* Form Data */}
+          {Object.keys(activeOrder.formData).length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <FileText size={18} className="text-primary-600" />
+                اطلاعات ثبت شده
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {Object.entries(activeOrder.formData).map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-xs text-gray-500 mb-1">{key}</p>
+                    <p className="font-medium text-gray-800">{String(value)}</p>
                   </div>
-                  <span className="text-xs text-gray-400">{order.date}</span>
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* No Order Found */}
+      {searchCode && !activeOrder && (
+        <div className="text-center py-12">
+          <XCircle size={48} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500">سفارشی با این کد رهگیری یافت نشد</p>
+        </div>
+      )}
+
+      {/* Recent Orders */}
+      {allOrders.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mt-6">
+          <h3 className="font-bold text-gray-800 mb-4">سفارش‌های اخیر شما</h3>
+          <div className="space-y-3">
+            {allOrders.slice(0, 5).map(order => (
+              <button
+                key={order.trackingCode}
+                onClick={() => { setActiveOrder(order); setSearchCode(order.trackingCode); }}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition text-right ${
+                  activeOrder?.trackingCode === order.trackingCode ? 'border-primary-300 bg-primary-50' : 'border-gray-100 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${getStatusColor(order.status)}`}>
+                    {order.status === 'completed' && <CheckCircle size={14} />}
+                    {order.status === 'processing' && <Clock size={14} />}
+                    {order.status === 'review' && <AlertCircle size={14} />}
+                    {order.status === 'pending' && <Clock size={14} />}
+                    {order.status === 'rejected' && <XCircle size={14} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{order.serviceTitle}</p>
+                    <p className="text-xs text-gray-500 font-mono">{order.trackingCode}</p>
+                  </div>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs text-gray-500">{getStatusLabel(order.status)}</p>
+                  <p className="text-xs text-gray-400">{order.progress}٪</p>
+                </div>
+              </button>
+            ))}
           </div>
+        </div>
+      )}
+
+      {/* No Orders */}
+      {allOrders.length === 0 && (
+        <div className="text-center py-12">
+          <Package size={48} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500">هنوز سفارشی ثبت نکرده‌اید</p>
         </div>
       )}
     </div>

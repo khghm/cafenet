@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { services as initialServices, sampleOrders as initialOrders, sampleUsers as initialUsers, sampleTickets as initialTickets, sampleTransactions as initialTransactions } from '../data/services';
 import { getServiceIcon, getCategoryIcon } from '../components/Icons';
 import type { Service, Order, AppUser, Ticket, Transaction } from '../data/services';
+import { updateOrderStatus as updateOrderStatusUtil } from '../utils/orderManagement';
 import {
   LayoutDashboard, Users, FileText, CreditCard, Settings, BarChart3,
   Bell, Search, Plus, TrendingUp, ArrowUpRight, ArrowDownRight, Shield,
@@ -244,11 +245,15 @@ function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] })
 }
 
 /* ============ ORDER DETAIL MODAL ============ */
-function OrderDetailModal({ order, onClose, updateOrderStatus }: { 
+function OrderDetailModal({ order, onClose, updateOrderStatus: updateStatus }: { 
   order: Order; 
   onClose: () => void;
   updateOrderStatus: (id: string, status: Order['status']) => void;
 }) {
+  const updateOrderStatus = (newStatus: Order['status']) => {
+    updateStatus(order.id, newStatus);
+    onClose();
+  };
   const [previewFile, setPreviewFile] = useState<any>(null);
   
   // Load files from localStorage
@@ -369,11 +374,11 @@ function OrderDetailModal({ order, onClose, updateOrderStatus }: {
         <div className="space-y-2 pt-4 border-t border-gray-100">
           <p className="text-xs font-bold text-gray-700 mb-2">تغییر وضعیت سفارش:</p>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => { updateOrderStatus(order.id, 'pending'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>در انتظار</button>
-            <button onClick={() => { updateOrderStatus(order.id, 'processing'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'processing' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>در حال انجام</button>
-            <button onClick={() => { updateOrderStatus(order.id, 'review'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}>در حال بررسی</button>
-            <button onClick={() => { updateOrderStatus(order.id, 'completed'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>تکمیل شده</button>
-            <button onClick={() => { updateOrderStatus(order.id, 'rejected'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition col-span-2 ${order.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'}`}>رد سفارش</button>
+            <button onClick={() => updateOrderStatus('pending')} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>در انتظار</button>
+            <button onClick={() => updateOrderStatus('processing')} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'processing' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>در حال انجام</button>
+            <button onClick={() => updateOrderStatus('review')} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}>در حال بررسی</button>
+            <button onClick={() => updateOrderStatus('completed')} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>تکمیل شده</button>
+            <button onClick={() => updateOrderStatus('rejected')} className={`py-2 rounded-lg text-sm font-medium transition col-span-2 ${order.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'}`}>رد سفارش</button>
           </div>
         </div>
       </div>
@@ -421,35 +426,51 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
 
   // Load real orders from localStorage
   useEffect(() => {
-    const realOrders: Order[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('order_') && key?.endsWith('_info')) {
-        const orderInfo = JSON.parse(localStorage.getItem(key) || '{}');
-        const trackingCode = orderInfo.trackingCode;
-        
-        // Check if this order already exists in our list
-        const exists = orders.find(o => o.trackingCode === trackingCode);
-        if (!exists) {
-          realOrders.push({
-            id: `real_${Date.now()}_${Math.random()}`,
-            serviceId: orderInfo.serviceId,
-            serviceTitle: orderInfo.serviceTitle,
-            status: 'pending',
-            date: new Date(orderInfo.submittedAt).toLocaleDateString('fa-IR'),
-            price: '۵۰,۰۰۰ تومان',
-            trackingCode: trackingCode,
-            progress: 20,
-            customerName: 'کاربر جدید',
-            priority: 'medium',
-          });
+    const loadRealOrders = () => {
+      const realOrders: Order[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('order_') && key?.endsWith('_info')) {
+          const orderInfo = JSON.parse(localStorage.getItem(key) || '{}');
+          const trackingCode = orderInfo.trackingCode;
+          
+          // Check if this order already exists in our list
+          const exists = orders.find(o => o.trackingCode === trackingCode);
+          if (!exists) {
+            // Get status from orderManagement
+            const statusKey = `order_status_${trackingCode}`;
+            const statusData = localStorage.getItem(statusKey);
+            const status = statusData ? JSON.parse(statusData) : null;
+            
+            realOrders.push({
+              id: `real_${Date.now()}_${Math.random()}`,
+              serviceId: orderInfo.serviceId,
+              serviceTitle: orderInfo.serviceTitle,
+              status: status?.status || 'pending',
+              date: new Date(orderInfo.submittedAt).toLocaleDateString('fa-IR'),
+              price: '۵۰,۰۰۰ تومان',
+              trackingCode: trackingCode,
+              progress: status?.progress || 20,
+              customerName: 'کاربر جدید',
+              operator: status?.operator,
+              priority: 'medium',
+            });
+          }
         }
       }
-    }
+      
+      if (realOrders.length > 0) {
+        setOrders(prev => [...prev, ...realOrders]);
+      }
+    };
     
-    if (realOrders.length > 0) {
-      setOrders(prev => [...prev, ...realOrders]);
-    }
+    loadRealOrders();
+    
+    // Listen for storage changes
+    const handleStorage = () => loadRealOrders();
+    window.addEventListener('storage', handleStorage);
+    
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const filteredOrders = orders.filter(o => {
@@ -460,6 +481,14 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
 
   const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, progress: newStatus === 'completed' ? 100 : newStatus === 'processing' ? 50 : newStatus === 'review' ? 75 : newStatus === 'rejected' ? 0 : 20 } : o));
+    
+    // Find the order to get tracking code
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      // Update status in localStorage for user tracking
+      updateOrderStatusUtil(order.trackingCode, newStatus, order.operator);
+    }
+    
     showToast('وضعیت سفارش بروزرسانی شد');
   };
 
