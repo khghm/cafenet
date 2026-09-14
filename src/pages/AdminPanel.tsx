@@ -423,6 +423,8 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [showEditStatus, setShowEditStatus] = useState(false);
+  const [sortField, setSortField] = useState<'date' | 'priority' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Load real orders from localStorage
   useEffect(() => {
@@ -479,6 +481,38 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
     return matchesSearch && matchesStatus;
   });
 
+  // Sort orders
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    if (!sortField) return 0;
+    
+    if (sortField === 'date') {
+      // Convert Persian date to comparable format
+      const dateA = new Date(a.date.split('/').reverse().join('-')).getTime();
+      const dateB = new Date(b.date.split('/').reverse().join('-')).getTime();
+      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+    
+    if (sortField === 'priority') {
+      const priorityMap = { high: 3, medium: 2, low: 1 };
+      const priorityA = priorityMap[a.priority];
+      const priorityB = priorityMap[b.priority];
+      return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
+    }
+    
+    return 0;
+  });
+
+  const handleSort = (field: 'date' | 'priority') => {
+    if (sortField === field) {
+      // Toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default direction
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
   const updateOrderStatus = (orderId: string, newStatus: Order['status']) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, progress: newStatus === 'completed' ? 100 : newStatus === 'processing' ? 50 : newStatus === 'review' ? 75 : newStatus === 'rejected' ? 0 : 20 } : o));
     
@@ -526,13 +560,38 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
                 <th className="text-right px-4 py-3 font-medium text-gray-600">خدمت</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">مشتری</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">وضعیت</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">اولویت</th>
+                <th 
+                  className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition select-none"
+                  onClick={() => handleSort('priority')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>اولویت</span>
+                    {sortField === 'priority' && (
+                      <span className="text-primary-600">
+                        {sortDirection === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="text-right px-4 py-3 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition select-none"
+                  onClick={() => handleSort('date')}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>تاریخ درخواست</span>
+                    {sortField === 'date' && (
+                      <span className="text-primary-600">
+                        {sortDirection === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </div>
+                </th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">اپراتور</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">عملیات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredOrders.map(order => (
+              {sortedOrders.map(order => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs text-primary-700">{order.trackingCode}</td>
                   <td className="px-4 py-3 text-gray-800">{order.serviceTitle}</td>
@@ -543,6 +602,7 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
                       order.priority === 'high' ? 'bg-rose-50 text-rose-700' : order.priority === 'medium' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'
                     }`}>{order.priority === 'high' ? 'بالا' : order.priority === 'medium' ? 'متوسط' : 'عادی'}</span>
                   </td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{order.date}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{order.operator || 'تخصیص نیافته'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
