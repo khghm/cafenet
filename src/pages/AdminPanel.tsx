@@ -481,14 +481,36 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
     return matchesSearch && matchesStatus;
   });
 
+  // Helper function to convert Persian numbers to English
+  const persianToEnglish = (str: string): string => {
+    const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    let result = str;
+    persianNumbers.forEach((num, idx) => {
+      result = result.replace(new RegExp(num, 'g'), idx.toString());
+    });
+    return result;
+  };
+
+  // Helper function to parse Persian date
+  const parsePersianDate = (dateStr: string): number => {
+    // Convert Persian date like "۱۴۰۳/۰۹/۱۵" to comparable number
+    const englishDate = persianToEnglish(dateStr);
+    const parts = englishDate.split('/');
+    if (parts.length === 3) {
+      const [year, month, day] = parts.map(p => parseInt(p, 10));
+      // Convert to a comparable number (YYYYMMDD format)
+      return year * 10000 + month * 100 + day;
+    }
+    return 0;
+  };
+
   // Sort orders
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     if (!sortField) return 0;
     
     if (sortField === 'date') {
-      // Convert Persian date to comparable format
-      const dateA = new Date(a.date.split('/').reverse().join('-')).getTime();
-      const dateB = new Date(b.date.split('/').reverse().join('-')).getTime();
+      const dateA = parsePersianDate(a.date);
+      const dateB = parsePersianDate(b.date);
       return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     }
     
