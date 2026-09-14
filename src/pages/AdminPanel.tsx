@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { services as initialServices, sampleOrders as initialOrders, sampleUsers as initialUsers, sampleTickets as initialTickets, sampleTransactions as initialTransactions } from '../data/services';
 import { getServiceIcon, getCategoryIcon } from '../components/Icons';
 import type { Service, Order, AppUser, Ticket, Transaction } from '../data/services';
@@ -253,12 +253,25 @@ function OrderDetailModal({ order, onClose, updateOrderStatus }: {
   
   // Load files from localStorage
   const orderFilesKey = `order_${order.trackingCode}_files`;
-  const uploadedFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
-  const filesArray = Object.entries(uploadedFiles) as [string, any][];
+  const uploadedFilesRaw = localStorage.getItem(orderFilesKey);
+  const uploadedFiles = uploadedFilesRaw ? JSON.parse(uploadedFilesRaw) : {};
+  
+  // Flatten all files from all fields
+  const filesArray: [string, any][] = [];
+  Object.entries(uploadedFiles).forEach(([fieldName, files]) => {
+    if (Array.isArray(files)) {
+      files.forEach((file: any, idx: number) => {
+        filesArray.push([`${fieldName}_${idx}`, file]);
+      });
+    } else if (files && typeof files === 'object') {
+      filesArray.push([fieldName, files]);
+    }
+  });
 
   // Load form data
   const orderInfoKey = `order_${order.trackingCode}_info`;
-  const orderInfo = JSON.parse(localStorage.getItem(orderInfoKey) || '{}');
+  const orderInfoRaw = localStorage.getItem(orderInfoKey);
+  const orderInfo = orderInfoRaw ? JSON.parse(orderInfoRaw) : {};
   const formData = orderInfo.formData || {};
 
   const formatFileSize = (bytes: number): string => {
@@ -353,10 +366,15 @@ function OrderDetailModal({ order, onClose, updateOrderStatus }: {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-4 border-t border-gray-100">
-          <button onClick={() => { updateOrderStatus(order.id, 'processing'); onClose(); }} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">تغییر به: در حال انجام</button>
-          <button onClick={() => { updateOrderStatus(order.id, 'completed'); onClose(); }} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">تکمیل سفارش</button>
-          <button onClick={() => { updateOrderStatus(order.id, 'rejected'); onClose(); }} className="flex-1 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700">رد سفارش</button>
+        <div className="space-y-2 pt-4 border-t border-gray-100">
+          <p className="text-xs font-bold text-gray-700 mb-2">تغییر وضعیت سفارش:</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { updateOrderStatus(order.id, 'pending'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>در انتظار</button>
+            <button onClick={() => { updateOrderStatus(order.id, 'processing'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'processing' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}>در حال انجام</button>
+            <button onClick={() => { updateOrderStatus(order.id, 'review'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'review' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'}`}>در حال بررسی</button>
+            <button onClick={() => { updateOrderStatus(order.id, 'completed'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition ${order.status === 'completed' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>تکمیل شده</button>
+            <button onClick={() => { updateOrderStatus(order.id, 'rejected'); onClose(); }} className={`py-2 rounded-lg text-sm font-medium transition col-span-2 ${order.status === 'rejected' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'}`}>رد سفارش</button>
+          </div>
         </div>
       </div>
 
@@ -399,6 +417,40 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [showEditStatus, setShowEditStatus] = useState(false);
+
+  // Load real orders from localStorage
+  useEffect(() => {
+    const realOrders: Order[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('order_') && key?.endsWith('_info')) {
+        const orderInfo = JSON.parse(localStorage.getItem(key) || '{}');
+        const trackingCode = orderInfo.trackingCode;
+        
+        // Check if this order already exists in our list
+        const exists = orders.find(o => o.trackingCode === trackingCode);
+        if (!exists) {
+          realOrders.push({
+            id: `real_${Date.now()}_${Math.random()}`,
+            serviceId: orderInfo.serviceId,
+            serviceTitle: orderInfo.serviceTitle,
+            status: 'pending',
+            date: new Date(orderInfo.submittedAt).toLocaleDateString('fa-IR'),
+            price: '۵۰,۰۰۰ تومان',
+            trackingCode: trackingCode,
+            progress: 20,
+            customerName: 'کاربر جدید',
+            priority: 'medium',
+          });
+        }
+      }
+    }
+    
+    if (realOrders.length > 0) {
+      setOrders(prev => [...prev, ...realOrders]);
+    }
+  }, []);
 
   const filteredOrders = orders.filter(o => {
     const matchesSearch = o.trackingCode.includes(searchQuery) || o.serviceTitle.includes(searchQuery) || o.customerName.includes(searchQuery);

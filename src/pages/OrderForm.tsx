@@ -17,7 +17,7 @@ export default function OrderForm() {
   const service = services.find(s => s.id === id);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [trackingCode] = useState(`KNT-${Math.floor(Math.random() * 900000 + 100000)}`);
   const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
@@ -37,26 +37,35 @@ export default function OrderForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = (fieldName: string, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      const uploadedFile: UploadedFile = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        dataUrl: dataUrl,
-        uploadDate: new Date().toLocaleDateString('fa-IR'),
+  const handleFileUpload = (fieldName: string, files: FileList | null) => {
+    if (!files) return;
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const uploadedFile: UploadedFile = {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          dataUrl: dataUrl,
+          uploadDate: new Date().toLocaleDateString('fa-IR'),
+        };
+        
+        setUploadedFiles(prev => {
+          const existing = prev[fieldName] || [];
+          return { ...prev, [fieldName]: [...existing, uploadedFile] };
+        });
+        
+        // Save to localStorage for admin to access
+        const orderFilesKey = `order_${trackingCode}_files`;
+        const existingFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
+        const fieldFiles = existingFiles[fieldName] || [];
+        existingFiles[fieldName] = [...fieldFiles, uploadedFile];
+        localStorage.setItem(orderFilesKey, JSON.stringify(existingFiles));
       };
-      setUploadedFiles(prev => ({ ...prev, [fieldName]: uploadedFile }));
-      
-      // Save to localStorage for admin to access
-      const orderFilesKey = `order_${trackingCode}_files`;
-      const existingFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
-      existingFiles[fieldName] = uploadedFile;
-      localStorage.setItem(orderFilesKey, JSON.stringify(existingFiles));
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleFileClick = (fieldName: string) => {
@@ -64,21 +73,24 @@ export default function OrderForm() {
   };
 
   const handleFileChange = (fieldName: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileUpload(fieldName, file);
+    handleFileUpload(fieldName, e.target.files);
+    // Reset input so same file can be uploaded again
+    if (fileInputRefs.current[fieldName]) {
+      fileInputRefs.current[fieldName]!.value = '';
     }
   };
 
-  const removeFile = (fieldName: string) => {
+  const removeFile = (fieldName: string, fileIndex: number) => {
     setUploadedFiles(prev => {
-      const newFiles = { ...prev };
-      delete newFiles[fieldName];
-      return newFiles;
+      const existing = prev[fieldName] || [];
+      const newFiles = existing.filter((_, i) => i !== fileIndex);
+      return { ...prev, [fieldName]: newFiles };
     });
+    
     const orderFilesKey = `order_${trackingCode}_files`;
     const existingFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
-    delete existingFiles[fieldName];
+    const fieldFiles = existingFiles[fieldName] || [];
+    existingFiles[fieldName] = fieldFiles.filter((_: any, i: number) => i !== fileIndex);
     localStorage.setItem(orderFilesKey, JSON.stringify(existingFiles));
   };
 
@@ -262,46 +274,56 @@ export default function OrderForm() {
                   onChange={(e) => handleFileChange(field.name, e)}
                   className="hidden"
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  multiple
                 />
                 <div
                   onClick={() => handleFileClick(field.name)}
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
-                    uploadedFiles[field.name] ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                    uploadedFiles[field.name]?.length ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
                   }`}
                 >
-                  {uploadedFiles[field.name] ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-emerald-700">
+                  {uploadedFiles[field.name]?.length ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-center gap-2 text-emerald-700 mb-2">
                         <CheckCircle size={20} />
-                        <span className="text-sm font-medium">{uploadedFiles[field.name].name}</span>
+                        <span className="text-sm font-medium">{uploadedFiles[field.name].length} فایل آپلود شده</span>
                       </div>
-                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
-                        <span>{formatFileSize(uploadedFiles[field.name].size)}</span>
-                        <span>•</span>
-                        <span>{uploadedFiles[field.name].uploadDate}</span>
+                      <div className="space-y-2">
+                        {uploadedFiles[field.name].map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-2 border border-emerald-200">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <File size={14} className="text-emerald-600 shrink-0" />
+                              <div className="flex-1 min-w-0 text-right">
+                                <p className="text-xs font-medium text-gray-800 truncate">{file.name}</p>
+                                <p className="text-[10px] text-gray-500">{formatFileSize(file.size)} • {file.uploadDate}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
+                                className="p-1 bg-gray-100 rounded hover:bg-gray-200"
+                                title="پیش‌نمایش"
+                              >
+                                <Eye size={12} className="text-gray-600" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); removeFile(field.name, idx); }}
+                                className="p-1 bg-rose-100 rounded hover:bg-rose-200"
+                                title="حذف"
+                              >
+                                <X size={12} className="text-rose-600" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center justify-center gap-2 mt-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setPreviewFile(uploadedFiles[field.name]); }}
-                          className="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-1"
-                        >
-                          <Eye size={12} />
-                          پیش‌نمایش
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removeFile(field.name); }}
-                          className="px-3 py-1 bg-white border border-rose-200 rounded-lg text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-1"
-                        >
-                          <X size={12} />
-                          حذف
-                        </button>
-                      </div>
+                      <p className="text-xs text-emerald-600 mt-2">+ افزودن فایل دیگر</p>
                     </div>
                   ) : (
                     <>
                       <Upload size={24} className="mx-auto text-gray-400 mb-2" />
                       <p className="text-sm text-gray-500">فایل را بکشید و رها کنید یا کلیک کنید</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, DOC — حداکثر ۱۰ مگابایت</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, DOC — حداکثر ۱۰ مگابایت • امکان آپلود چندین فایل</p>
                     </>
                   )}
                 </div>
