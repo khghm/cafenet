@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { services as initialServices, sampleOrders as initialOrders, sampleUsers as initialUsers, sampleTickets as initialTickets, sampleTransactions as initialTransactions } from '../data/services';
+import { getServiceTraining } from '../data/serviceTrainings';
 import { getServiceIcon, getCategoryIcon } from '../components/Icons';
 import type { Service, Order, AppUser, Ticket, Transaction } from '../data/services';
 import { updateOrderStatus as updateOrderStatusUtil } from '../utils/orderManagement';
@@ -1401,275 +1402,6 @@ function SettingsView({ showToast }: { showToast: (m: string, t?: any) => void }
   );
 }
 
-/* ============ SERVICE TRAINING HELPERS ============ */
-function getServiceSteps(serviceId: string): { title: string; desc: string }[] {
-  const steps: Record<string, { title: string; desc: string }[]> = {
-    s1: [
-      { title: 'دریافت اطلاعات کاربر', desc: 'نام کامل، کد ملی و نوع آزمون (سراسری، ارشد، دکتری) را از کاربر دریافت کنید' },
-      { title: 'بررسی مدارک', desc: 'عکس پرسنلی ۳×۴ جدید و تصویر کارت ملی را بررسی کنید. عکس باید بدون روتوش و با زمینه سفید باشد' },
-      { title: 'ورود به سایت سنجش', desc: 'به سایت sanjesh.org مراجعه و روی لینک ثبت‌نام آزمون مورد نظر کلیک کنید' },
-      { title: 'تکمیل فرم ثبت‌نام', desc: 'اطلاعات فردی، تحصیلی و محل آزمون را در فرم آنلاین وارد کنید' },
-      { title: 'آپلود مدارک', desc: 'عکس پرسنلی و اسکن کارت ملی را با فرمت و حجم مشخص آپلود کنید' },
-      { title: 'پرداخت هزینه', desc: 'هزینه ثبت‌نام را از طریق درگاه بانکی پرداخت کنید' },
-      { title: 'دریافت کد پیگیری', desc: 'کد پیگیری ۱۲ رقمی را یادداشت و به کاربر ارائه دهید' },
-    ],
-    s2: [
-      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی و نوع درخواست (معافیت تحصیلی، تعیین وضعیت، کفالت) را دریافت کنید' },
-      { title: 'ورود به سامانه وظیفه', desc: 'به سایت vazifeh.police.ir مراجعه و وارد بخش خدمات شوید' },
-      { title: 'احراز هویت', desc: 'با کد ملی و شماره موبایل وارد سامانه شوید' },
-      { title: 'ثبت درخواست', desc: 'نوع درخواست را انتخاب و اطلاعات لازم را وارد کنید' },
-      { title: 'آپلود مدارک', desc: 'مدارک مربوطه (گواهی اشتغال به تحصیل، سند کفالت و...) را آپلود کنید' },
-      { title: 'دریافت رسید', desc: 'رسید درخواست را چاپ و به کاربر ارائه دهید' },
-    ],
-    s3: [
-      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی و گروه آزمایشی را دریافت کنید' },
-      { title: 'بررسی عکس', desc: 'عکس پرسنلی استاندارد را بررسی کنید' },
-      { title: 'ورود به سایت سنجش', desc: 'به بخش ثبت‌نام کنکور در sanjesh.org مراجعه کنید' },
-      { title: 'تکمیل فرم', desc: 'اطلاعات فردی و تحصیلی را وارد و گروه آزمایشی را انتخاب کنید' },
-      { title: 'پرداخت', desc: 'هزینه ثبت‌نام را پرداخت کنید' },
-      { title: 'دریافت کد', desc: 'کد پیگیری را به کاربر ارائه دهید' },
-    ],
-    s4: [
-      { title: 'دریافت مدارک', desc: 'تصویر پشت و رو کارت ملی، شناسنامه و شماره موبایل به نام متقاضی' },
-      { title: 'ورود به سامانه ثنا', desc: 'به سایت adliran.ir مراجعه و روی ثبت‌نام ثنا کلیک کنید' },
-      { title: 'وارد کردن اطلاعات هویتی', desc: 'نام، کد ملی، تاریخ تولد و شماره شناسنامه را وارد کنید' },
-      { title: 'آپلود مدارک', desc: 'تصویر واضح کارت ملی و شناسنامه را آپلود کنید' },
-      { title: 'تأیید شماره موبایل', desc: 'کد تأیید ارسال شده به موبایل را وارد کنید' },
-      { title: 'تأیید نهایی', desc: 'اطلاعات را بازبینی و تأیید نهایی کنید' },
-      { title: 'دریافت رمز شخصی', desc: 'رمز شخصی ثنا را یادداشت و به کاربر ارائه دهید' },
-    ],
-    s5: [
-      { title: 'دریافت فایل', desc: 'فایل دیجیتال (PDF، Word، تصویر) را از کاربر دریافت کنید' },
-      { title: 'بررسی کیفیت', desc: 'فایل را از نظر وضوح، اندازه و کیفیت بررسی کنید' },
-      { title: 'تنظیمات چاپ', desc: 'نوع چاپ (رنگی/سیاه‌وسفید)، اندازه (A4/A3) و تعداد نسخه را تنظیم کنید' },
-      { title: 'پیش‌نمایش', desc: 'پیش‌نمایش چاپ را بررسی کنید' },
-      { title: 'چاپ سند', desc: 'دستور چاپ را صادر کنید' },
-      { title: 'کنترل کیفیت', desc: 'خروجی چاپ شده را بررسی کنید' },
-      { title: 'تحویل به کاربر', desc: 'سند چاپ شده را به کاربر تحویل دهید' },
-    ],
-    s6: [
-      { title: 'دریافت سند', desc: 'سند اصلی را به صورت فایل یا فیزیکی دریافت کنید' },
-      { title: 'تعیین زبان‌ها', desc: 'زبان مبدأ و مقصد را مشخص کنید' },
-      { title: 'بررسی محتوا', desc: 'محتوای سند را بررسی و تعداد کلمات را مشخص کنید' },
-      { title: 'تعیین هزینه', desc: 'بر اساس تعداد کلمات و نوع ترجمه، هزینه را محاسبه کنید' },
-      { title: 'ارجاع به مترجم', desc: 'سند را به مترجم رسمی متخصص در آن حوزه ارجاع دهید' },
-      { title: 'انجام ترجمه', desc: 'مترجم ترجمه را انجام می‌دهد' },
-      { title: 'بازبینی', desc: 'ترجمه توسط بازبین کنترل کیفیت می‌شود' },
-      { title: 'مهر و امضا', desc: 'ترجمه در دفتر ترجمه رسمی مهر و امضا می‌شود' },
-      { title: 'تحویل نهایی', desc: 'ترجمه رسمی را به همراه فیش هزینه به کاربر تحویل دهید' },
-    ],
-    s7: [
-      { title: 'دریافت اطلاعات', desc: 'نام، کد ملی/شناسه ملی و نوع خدمت مالیاتی را دریافت کنید' },
-      { title: 'ورود به سامانه مالیاتی', desc: 'به سایت tax.gov.ir مراجعه و وارد شوید' },
-      { title: 'ثبت/پیگیری', desc: 'بسته به نوع درخواست، پرونده تشکیل یا پیگیری کنید' },
-      { title: 'آپلود مدارک', desc: 'اسناد مالی و مدارک مربوطه را آپلود کنید' },
-      { title: 'ارسال اظهارنامه', desc: 'اظهارنامه را نهایی و ارسال کنید' },
-      { title: 'دریافت رسید', desc: 'رسید الکترونیکی را دریافت و به کاربر ارائه دهید' },
-    ],
-    s8: [
-      { title: 'دریافت اطلاعات خودرو', desc: 'شماره پلاک، مدل و سال ساخت خودرو را دریافت کنید' },
-      { title: 'بررسی بیمه‌نامه قبلی', desc: 'در صورت وجود، بیمه‌نامه قبلی را بررسی کنید' },
-      { title: 'محاسبه حق بیمه', desc: 'بر اساس نوع خودرو و پوشش، حق بیمه را محاسبه کنید' },
-      { title: 'انتخاب شرکت بیمه', desc: 'شرکت بیمه مورد نظر را انتخاب کنید' },
-      { title: 'تکمیل فرم', desc: 'فرم بیمه‌نامه را تکمیل کنید' },
-      { title: 'پرداخت', desc: 'حق بیمه را پرداخت کنید' },
-      { title: 'صدور بیمه‌نامه', desc: 'بیمه‌نامه الکترونیکی را دریافت و به کاربر ارائه دهید' },
-    ],
-    s9: [
-      { title: 'دریافت اطلاعات', desc: 'اپراتور (همراه اول/ایرانسل/رایتل)، شماره موبایل و نوع خرید را دریافت کنید' },
-      { title: 'بررسی شماره', desc: 'صحت شماره موبایل و اپراتور را بررسی کنید' },
-      { title: 'انتخاب بسته', desc: 'بسته شارژ یا اینترنت مورد نظر را انتخاب کنید' },
-      { title: 'پرداخت', desc: 'مبلغ را از طریق درگاه پرداخت کنید' },
-      { title: 'تأیید شارژ', desc: 'منتظر پیامک تأیید از اپراتور باشید' },
-      { title: 'اطلاع‌رسانی', desc: 'نتیجه را به کاربر اطلاع دهید' },
-    ],
-    s10: [
-      { title: 'دریافت اطلاعات', desc: 'نوع خدمت (گذرنامه/گواهینامه/کارت پایان خدمت/سوءپیشینه) را مشخص کنید' },
-      { title: 'دریافت مدارک', desc: 'عکس پرسنلی، کارت ملی و شناسنامه را دریافت کنید' },
-      { title: 'ورود به سامانه پلیس+۱۰', desc: 'به سایت police.ir مراجعه کنید' },
-      { title: 'تکمیل فرم', desc: 'فرم درخواست را تکمیل کنید' },
-      { title: 'پرداخت هزینه', desc: 'هزینه خدمت را پرداخت کنید' },
-      { title: 'دریافت نوبت', desc: 'در صورت نیاز، نوبت حضوری دریافت کنید' },
-    ],
-    s11: [
-      { title: 'دریافت فایل', desc: 'فایل یا تصویر متن را دریافت کنید' },
-      { title: 'تعیین نوع تایپ', desc: 'نوع تایپ (ساده/فرمول‌دار/صفحه‌آرایی) را مشخص کنید' },
-      { title: 'برآورد حجم', desc: 'تعداد صفحات تقریبی را مشخص کنید' },
-      { title: 'انجام تایپ', desc: 'متن را تایپ و صفحه‌آرایی کنید' },
-      { title: 'بازبینی', desc: 'خروجی را بازبینی کنید' },
-      { title: 'تحویل', desc: 'فایل نهایی را به کاربر تحویل دهید' },
-    ],
-    s12: [
-      { title: 'دریافت کد ملی', desc: 'کد ملی مشمول سهام عدالت را دریافت کنید' },
-      { title: 'ورود به سامانه', desc: 'به سایت sahaledalat.ir مراجعه کنید' },
-      { title: 'مشاهده وضعیت', desc: 'وضعیت سهام و ارزش آن را مشاهده کنید' },
-      { title: 'انتخاب عملیات', desc: 'عملیات مورد نظر (مشاهده/فروش/تغییر روش) را انتخاب کنید' },
-      { title: 'تأیید', desc: 'عملیات را تأیید کنید' },
-      { title: 'دریافت رسید', desc: 'رسید عملیات را به کاربر ارائه دهید' },
-    ],
-    s18: [
-      { title: 'دریافت شناسه قبض', desc: 'شناسه قبض (۶ تا ۱۳ رقم) را دریافت کنید' },
-      { title: 'دریافت شناسه پرداخت', desc: 'شناسه پرداخت را دریافت کنید' },
-      { title: 'ورود به سامانه', desc: 'به سامانه پرداخت قبوض مراجعه کنید' },
-      { title: 'وارد کردن شناسه‌ها', desc: 'شناسه قبض و پرداخت را وارد کنید' },
-      { title: 'بررسی مبلغ', desc: 'مبلغ قبض و جزئیات را بررسی کنید' },
-      { title: 'پرداخت', desc: 'قبض را پرداخت کنید' },
-      { title: 'ارسال رسید', desc: 'رسید پرداخت را به کاربر ارائه دهید' },
-    ],
-  };
-  
-  return steps[serviceId] || [
-    { title: 'دریافت درخواست', desc: 'اطلاعات و مدارک لازم را از کاربر دریافت کنید' },
-    { title: 'بررسی مدارک', desc: 'مدارک ارائه شده را از نظر صحت و کامل بودن بررسی کنید' },
-    { title: 'ورود به سامانه', desc: 'به سامانه مربوطه مراجعه و با اطلاعات کاربر وارد شوید' },
-    { title: 'ثبت اطلاعات', desc: 'اطلاعات را در فرم‌های سامانه وارد کنید' },
-    { title: 'آپلود مدارک', desc: 'مدارک اسکن شده را در سامانه آپلود کنید' },
-    { title: 'پرداخت هزینه', desc: 'هزینه خدمت را از طریق درگاه پرداخت کنید' },
-    { title: 'دریافت رسید', desc: 'رسید و کد پیگیری را دریافت و به کاربر ارائه دهید' },
-  ];
-}
-
-function getServiceDocuments(serviceId: string): string[] {
-  const docs: Record<string, string[]> = {
-    s1: ['عکس پرسنلی ۳×۴ جدید (زمینه سفید، بدون روتوش)', 'تصویر کارت ملی (پشت و رو)', 'مدرک تحصیلی آخرین مقطع', 'شماره تلفن ثابت و همراه'],
-    s2: ['تصویر کارت ملی', 'گواهی اشتغال به تحصیل معتبر', 'آخرین مدرک تحصیلی'],
-    s3: ['عکس پرسنلی ۳×۴', 'تصویر کارت ملی', 'مدرک پیش‌دانشگاهی یا دیپلم'],
-    s4: ['تصویر واضح کارت ملی (پشت و رو)', 'تصویر صفحه اول شناسنامه', 'شماره موبایل فعال به نام متقاضی', 'کد پستی محل سکونت'],
-    s5: ['فایل دیجیتال سند (PDF، Word یا تصویر با کیفیت)'],
-    s6: ['سند اصلی جهت ترجمه', 'تعیین زبان مبدأ و مقصد'],
-    s7: ['کد ملی یا شناسه ملی', 'اسناد و مدارک مالی سال مورد نظر', 'دفتر کل و روزنامه (برای اشخاص حقوقی)'],
-    s8: ['کارت ماشین', 'بیمه‌نامه قبلی (در صورت تمدید)', 'کارت ملی مالک خودرو', 'گواهینامه رانندگی'],
-    s9: ['شماره موبایل معتبر'],
-    s10: ['عکس پرسنلی ۳×۴ جدید', 'تصویر کارت ملی', 'تصویر شناسنامه', 'کد پستی'],
-    s11: ['فایل یا تصویر متن (خوانا و واضح)', 'فرمت خروجی مورد نظر (Word/PDF)'],
-    s12: ['کد ملی مشمول سهام عدالت', 'شماره حساب بانکی به نام متقاضی'],
-    s13: ['تصویر کارت ملی', 'مدرک اثبات آدرس (قبض آب/برق/گاز)', 'تصویر آخرین مدرک تحصیلی'],
-    s14: ['تصویر کارت ملی', 'گواهی پزشکی (برای پوشش‌های خاص)', 'اطلاعات شغلی'],
-    s15: ['فایل متن اصلی', 'تعیین زبان مبدأ و مقصد'],
-    s16: ['تصویر کارت ملی', 'تصویر شناسنامه', 'عکس ۳×۴', 'آدرس و کد پستی'],
-    s17: ['اطلاعات طرفین قرارداد', 'توضیحات موضوع قرارداد', 'مدارک هویتی'],
-    s18: ['شناسه قبض', 'شناسه پرداخت'],
-    s19: ['کد ملی یا شناسه ملی', 'مدارک مالی سال مورد نظر', 'اسناد درآمد و هزینه'],
-    s20: ['تصویر کارت ملی', 'کارت ماشین یا سند خودرو'],
-    s21: ['کارنامه کنکور', 'کد دسترسی انتخاب رشته'],
-    s22: ['تصویر پاسپورت', 'بلیط هواپیما', 'اطلاعات سفر'],
-    s23: ['تصویر کارت ملی موکل و وکیل', 'توضیحات موضوع وکالت'],
-    s24: ['تصویر کارت ملی', 'آدرس و کد پستی'],
-    s25: ['نیازمندی‌های سایت', 'محتوای اولیه', 'لوگو و تصاویر'],
-    s26: ['فایل نهایی', 'نوع صحافی مورد نظر'],
-    s27: ['کد ملی سرپرست خانوار'],
-    s28: ['تصویر کارت ملی', 'فیش حقوقی یا مدارک درآمدی', 'سند ملکی (برای وام مسکن)'],
-    s29: ['تصویر سند ملک', 'متراژ و مشخصات ملک'],
-    s30: ['فایل متن', 'زبان مقصد', 'زمان تحویل مورد نظر'],
-    s31: ['گواهی فوت', 'تصویر شناسنامه متوفی', 'اطلاعات وراث'],
-    s32: ['تصویر کارت ملی', 'نوع فرم مورد نظر'],
-    s33: ['شماره موبایل', 'شناسه قبض'],
-    s34: ['شناسه ملی شرکت', 'اسناد مالی فصل'],
-    s35: ['تصویر کارت ملی', 'تصویر شناسنامه', 'عکس ۳×۴'],
-    s36: ['تصویر شناسنامه دانش‌آموز', 'کد ملی', 'کارنامه سال قبل'],
-    s37: ['کارت ماشین', 'بیمه‌نامه قبلی', 'کارت ملی'],
-    s38: ['تصویر کارت ملی شاکی', 'مدارک و مستندات'],
-    s39: ['شماره تلفن ثابت', 'کد پستی', 'تصویر کارت ملی'],
-    s40: ['نام دامنه', 'نام کاربری مورد نظر'],
-    s41: ['فایل طرح با کیفیت', 'ابعاد و تعداد'],
-    s42: ['تعیین خدمت', 'تاریخ و ساعت مراجعه'],
-  };
-  return docs[serviceId] || [];
-}
-
-function getServiceNotes(serviceId: string): string[] {
-  const notes: Record<string, string[]> = {
-    s1: [
-      'عکس باید جدید، ۳×۴ و با زمینه سفید باشد',
-      'حجم فایل عکس نباید بیشتر از ۲۰۰ کیلوبایت باشد',
-      'کد پیگیری ۱۲ رقمی را حتماً یادداشت کنید',
-      'مهلت ثبت‌نام را چک کنید و قبل از پایان اقدام کنید',
-      'در صورت خطا در اطلاعات، امکان ویرایش تا مهلت وجود دارد',
-    ],
-    s2: [
-      'درخواست معافیت تحصیلی فقط برای دانشجویان فعال مجاز است',
-      'مدارک باید واضح و خوانا باشند',
-      'پاسخ درخواست معمولاً ظرف ۷۲ ساعت صادر می‌شود',
-      'در صورت نیاز به مراجعه حضوری، نوبت بگیرید',
-    ],
-    s3: [
-      'گروه آزمایشی قابل تغییر نیست، دقت کنید',
-      'عکس باید مطابق با استانداردهای سنجش باشد',
-      'کد پیگیری را تا زمان اعلام نتایج نگهداری کنید',
-    ],
-    s4: [
-      'شماره موبایل حتماً باید به نام متقاضی باشد',
-      'احراز هویت حضوری نیز ممکن است لازم باشد',
-      'فرآیند ثبت‌نام ممکن است تا ۷۲ ساعت طول بکشد',
-      'رمز شخصی ثنا را محرمانه نگهداری کنید',
-      'پس از ثبت‌نام، ابلاغیه‌های قضایی به صورت الکترونیکی ارسال می‌شود',
-    ],
-    s5: [
-      'فایل‌های PDF بهترین کیفیت چاپ را دارند',
-      'برای چاپ رنگی، فایل باید با رزولوشن حداقل ۳۰۰dpi باشد',
-      'قبل از چاپ انبوه، یک نمونه چاپ کنید',
-    ],
-    s6: [
-      'ترجمه رسمی دارای مهر و امضای مترجم قوه قضاییه است',
-      'زمان تحویل بسته به حجم و تخصص سند متغیر است (معمولاً ۲۴ تا ۷۲ ساعت)',
-      'امکان ترجمه فوری با هزینه اضافی وجود دارد',
-      'ترجمه رسمی برای ارائه به سفارت‌خانه‌ها و مؤسسات بین‌المللی معتبر است',
-    ],
-    s7: [
-      'اظهارنامه مالیاتی باید تا پایان خرداد هر سال ارسال شود',
-      'جریمه تأخیر در ارسال اظهارنامه سنگین است',
-      'مدارک مالی باید حداقل ۱۰ سال نگهداری شوند',
-    ],
-    s8: [
-      'بیمه‌نامه الکترونیکی به جای بیمه‌نامه کاغذی صادر می‌شود',
-      'تخفیف عدم خسارت سال‌های قبل منتقل می‌شود',
-      'در صورت فروش خودرو، بیمه‌نامه قابل انتقال است',
-    ],
-    s9: [
-      'شارژ بلافاصله پس از پرداخت اعمال می‌شود',
-      'در صورت عدم اعمال، تا ۲۴ ساعت صبر کنید',
-      'بسته‌های اینترنت معمولاً از زمان فعال‌سازی محاسبه می‌شوند',
-      'در صورت بروز مشکل، با پشتیبانی تماس بگیرید',
-    ],
-    s10: [
-      'عکس باید مطابق با استاندارد پلیس+۱۰ باشد',
-      'برای گذرنامه، مراجعه حضوری جهت انگشت‌نگاری الزامی است',
-      'صدور گذرنامه معمولاً ۱۰ روز کاری طول می‌کشد',
-    ],
-    s11: [
-      'تایپ فرمول‌دار هزینه بیشتری دارد',
-      'صفحه‌آرایی پایان‌نامه باید مطابق با فرمت دانشگاه باشد',
-      'فایل نهایی را حتماً بازبینی کنید',
-    ],
-    s12: [
-      'فروش سهام عدالت فقط از طریق بانک‌های مجاز امکان‌پذیر است',
-      'سود سهام عدالت سالانه به حساب مشمولان واریز می‌شود',
-    ],
-    s18: [
-      'قبل از پرداخت، مبلغ و نوع قبض را بررسی کنید',
-      'رسید پرداخت را تا پایان دوره نگهداری کنید',
-      'در صورت قطع خدمات، ابتدا قبض‌های معوقه را پرداخت کنید',
-    ],
-    s19: [
-      'اظهارنامه باید تا پایان تیرماه ارسال شود',
-      'عدم ارسال به موقع موجب جریمه می‌شود',
-      'اسناد مالی باید منظم و قابل ردیابی باشند',
-    ],
-    s28: [
-      'ضامن معتبر برای اکثر وام‌ها الزامی است',
-      'مدارک درآمدی باید رسمی و قابل تأیید باشند',
-      'بررسی و پرداخت وام معمولاً ۲ تا ۴ هفته طول می‌کشد',
-    ],
-  };
-  
-  return notes[serviceId] || [
-    'مدارک باید واضح و خوانا باشند',
-    'اطلاعات وارد شده باید با مدارک مطابقت داشته باشد',
-    'در صورت بروز مشکل، با پشتیبانی تماس بگیرید',
-    'کد پیگیری را تا اتمام فرآیند نگهداری کنید',
-  ];
-}
-
 /* ============ TRAINING VIEW ============ */
 function TrainingView({ services }: { services: Service[] }) {
   const [activeTab, setActiveTab] = useState<'tutorials' | 'resources' | 'services'>('tutorials');
@@ -2292,11 +2024,13 @@ function TrainingView({ services }: { services: Service[] }) {
                       <ChevronDown size={20} className={`text-gray-400 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
                     
-                    {isExpanded && (
+                    {isExpanded && (() => {
+                      const training = getServiceTraining(service.id);
+                      return (
                       <div className="border-t border-gray-100 bg-gray-50">
-                        <div className="p-5">
+                        <div className="p-5 space-y-5">
                           {/* Service Info Header */}
-                          <div className="bg-white rounded-xl p-4 border border-gray-200 mb-5">
+                          <div className="bg-white rounded-xl p-4 border border-gray-200">
                             <div className="flex items-start gap-4">
                               <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center shrink-0">
                                 <SIcon size={28} className="text-primary-600" />
@@ -2304,35 +2038,78 @@ function TrainingView({ services }: { services: Service[] }) {
                               <div className="flex-1">
                                 <h3 className="font-bold text-gray-800 text-lg">{service.title}</h3>
                                 <p className="text-sm text-gray-600 mt-1 leading-6">{service.description}</p>
-                                <div className="flex flex-wrap items-center gap-4 mt-3">
+                                <div className="flex flex-wrap items-center gap-3 mt-3">
                                   <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
                                     <Clock size={12} className="text-gray-500" />
-                                    <span>زمان: {service.duration}</span>
+                                    <span>زمان: {training.estimatedTime}</span>
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
                                     <CreditCard size={12} className="text-gray-500" />
                                     <span>هزینه: {service.price}</span>
+                                  </div>
+                                  <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg ${
+                                    training.difficulty === 'آسان' ? 'bg-emerald-100 text-emerald-700' :
+                                    training.difficulty === 'متوسط' ? 'bg-amber-100 text-amber-700' :
+                                    'bg-rose-100 text-rose-700'
+                                  }`}>
+                                    <span>سطح: {training.difficulty}</span>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Steps */}
-                          <div className="space-y-3 mb-5">
+                          {/* Prerequisites */}
+                          {training.prerequisites.length > 0 && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                              <h4 className="font-bold text-purple-800 flex items-center gap-2 mb-3">
+                                <CheckCircle size={16} />
+                                پیش‌نیازها
+                              </h4>
+                              <div className="grid sm:grid-cols-2 gap-2">
+                                {training.prerequisites.map((prereq, i) => (
+                                  <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-purple-100">
+                                    <span className="w-5 h-5 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+                                    <span className="text-sm text-purple-800">{prereq}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Steps with detailed info */}
+                          <div className="space-y-3">
                             <h4 className="font-bold text-gray-800 flex items-center gap-2">
                               <ClipboardList size={18} className="text-primary-600" />
-                              مراحل انجام خدمت
+                              مراحل انجام خدمت ({training.steps.length} مرحله)
                             </h4>
-                            <div className="space-y-2">
-                              {getServiceSteps(service.id).map((step, i) => (
-                                <div key={i} className="flex gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                                  <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                                    <span className="text-xs font-bold text-primary-700">{i + 1}</span>
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-800">{step.title}</p>
-                                    <p className="text-xs text-gray-600 mt-0.5 leading-5">{step.desc}</p>
+                            <div className="space-y-3">
+                              {training.steps.map((step, i) => (
+                                <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                  <div className="flex gap-3 p-3">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                                      <span className="text-sm font-bold text-white">{i + 1}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-sm font-bold text-gray-800 mb-1">{step.title}</p>
+                                      <p className="text-xs text-gray-600 leading-6">{step.desc}</p>
+                                      
+                                      {/* Tip */}
+                                      {step.tip && (
+                                        <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2">
+                                          <Lightbulb size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                                          <span className="text-xs text-emerald-700 leading-5"><strong>نکته:</strong> {step.tip}</span>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Warning */}
+                                      {step.warning && (
+                                        <div className="mt-2 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-lg p-2">
+                                          <AlertCircle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                          <span className="text-xs text-rose-700 leading-5"><strong>هشدار:</strong> {step.warning}</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -2340,14 +2117,14 @@ function TrainingView({ services }: { services: Service[] }) {
                           </div>
 
                           {/* Required Documents */}
-                          {getServiceDocuments(service.id).length > 0 && (
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                          {training.documents.length > 0 && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                               <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-3">
                                 <FileText size={16} />
                                 مدارک مورد نیاز
                               </h4>
                               <div className="grid sm:grid-cols-2 gap-2">
-                                {getServiceDocuments(service.id).map((doc, i) => (
+                                {training.documents.map((doc, i) => (
                                   <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-amber-100">
                                     <CheckCircle size={14} className="mt-0.5 shrink-0 text-amber-600" />
                                     <span className="text-sm text-amber-800">{doc}</span>
@@ -2358,22 +2135,54 @@ function TrainingView({ services }: { services: Service[] }) {
                           )}
 
                           {/* Important Notes */}
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                            <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-3">
-                              <AlertCircle size={16} />
-                              نکات مهم و کلیدی
-                            </h4>
-                            <div className="space-y-2">
-                              {getServiceNotes(service.id).map((note, i) => (
-                                <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-blue-100">
-                                  <CheckCircle size={14} className="mt-0.5 shrink-0 text-blue-600" />
-                                  <span className="text-sm text-blue-800">{note}</span>
-                                </div>
-                              ))}
+                          {training.notes.length > 0 && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                              <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-3">
+                                <AlertCircle size={16} />
+                                نکات مهم و کلیدی
+                              </h4>
+                              <div className="space-y-2">
+                                {training.notes.map((note, i) => (
+                                  <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-blue-100">
+                                    <CheckCircle size={14} className="mt-0.5 shrink-0 text-blue-600" />
+                                    <span className="text-sm text-blue-800">{note}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
 
-                          {/* Additional Tips */}
+                          {/* Common Issues */}
+                          {training.commonIssues.length > 0 && (
+                            <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                              <h4 className="font-bold text-rose-800 flex items-center gap-2 mb-3">
+                                <AlertCircle size={16} />
+                                مشکلات رایج و راه‌حل‌ها
+                              </h4>
+                              <div className="space-y-3">
+                                {training.commonIssues.map((issue, i) => (
+                                  <div key={i} className="bg-white rounded-lg p-3 border border-rose-100">
+                                    <div className="flex items-start gap-2 mb-2">
+                                      <XCircle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-bold text-rose-800">مشکل:</p>
+                                        <p className="text-sm text-rose-700">{issue.problem}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2 pt-2 border-t border-rose-100">
+                                      <CheckCircle size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-bold text-emerald-800">راه‌حل:</p>
+                                        <p className="text-sm text-emerald-700">{issue.solution}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Operator Tips */}
                           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                             <h4 className="font-bold text-emerald-800 flex items-center gap-2 mb-3">
                               <Lightbulb size={16} />
@@ -2400,7 +2209,8 @@ function TrainingView({ services }: { services: Service[] }) {
                           </div>
                         </div>
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}
