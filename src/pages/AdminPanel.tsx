@@ -8,7 +8,9 @@ import {
   MessageCircle, Eye, Edit, Trash2, X, Check, ChevronDown, Save,
   AlertCircle, Clock, CheckCircle, XCircle, Loader, MoreVertical,
   Download, Filter, Send, ArrowLeft, Building2, Globe, Lock, Mail,
-  Phone, Wifi, Database, Server, Zap
+  Phone, Wifi, Database, Server, Zap, BookOpen, GraduationCap, ExternalLink,
+  PlayCircle, Video, HelpCircle, Lightbulb, Bookmark, Link2, ChevronLeft,
+  Monitor, MousePointer, KeyRound, FileCheck, ClipboardList, Headphones
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -35,6 +37,7 @@ export default function AdminPanel() {
     { id: 'support', label: 'پشتیبانی', icon: MessageCircle },
     { id: 'analytics', label: 'تحلیل و گزارش', icon: BarChart3 },
     { id: 'settings', label: 'تنظیمات', icon: Settings },
+    { id: 'training', label: 'آموزش ادمین', icon: GraduationCap },
   ];
 
   return (
@@ -102,6 +105,7 @@ export default function AdminPanel() {
         {activeSection === 'support' && <SupportView tickets={ticketsList} setTickets={setTicketsList} showToast={showToast} />}
         {activeSection === 'analytics' && <AnalyticsView orders={ordersList} />}
         {activeSection === 'settings' && <SettingsView showToast={showToast} />}
+        {activeSection === 'training' && <TrainingView />}
       </div>
     </div>
   );
@@ -991,6 +995,476 @@ function SettingsView({ showToast }: { showToast: (m: string, t?: any) => void }
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ============ TRAINING VIEW ============ */
+function TrainingView() {
+  const [activeTab, setActiveTab] = useState<'tutorials' | 'resources'>('tutorials');
+  const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
+
+  const tutorials = [
+    {
+      id: 'getting-started',
+      title: 'راهنمای شروع سریع',
+      icon: PlayCircle,
+      color: 'from-blue-500 to-blue-600',
+      description: 'آشنایی اولیه با پنل مدیریت و امکانات آن',
+      steps: [
+        { title: 'ورود به پنل', desc: 'با نام کاربری و رمز عبور مدیر وارد پنل شوید. پس از ورود، داشبورد اصلی نمایش داده می‌شود.' },
+        { title: 'آشنایی با داشبورد', desc: 'داشبورد شامل نمای کلی از درآمد روزانه، تعداد سفارش‌ها، کاربران فعال و نرخ تبدیل است. نمودارهای درآمد و توزیع سفارش‌ها در این بخش قابل مشاهده هستند.' },
+        { title: 'ناوبری در منو', desc: 'از منوی سمت راست می‌توانید به بخش‌های مختلف شامل سفارش‌ها، کاربران، خدمات، مالی، پشتیبانی، تحلیل و تنظیمات دسترسی پیدا کنید.' },
+        { title: 'شخصی‌سازی', desc: 'از بخش تنظیمات می‌توانید نام پلتفرم، اطلاعات تماس، تنظیمات امنیتی و سرویس‌های متصل را مدیریت کنید.' },
+      ]
+    },
+    {
+      id: 'orders-management',
+      title: 'مدیریت سفارش‌ها',
+      icon: ClipboardList,
+      color: 'from-emerald-500 to-emerald-600',
+      description: 'نحوه مدیریت، پیگیری و تخصیص سفارش‌ها',
+      steps: [
+        { title: 'مشاهده لیست سفارش‌ها', desc: 'در بخش سفارش‌ها، تمام سفارش‌های ثبت شده با جزئیات شامل کد رهگیری، خدمت، مشتری، وضعیت، اولویت و اپراتور تخصیص یافته نمایش داده می‌شوند.' },
+        { title: 'فیلتر و جستجو', desc: 'می‌توانید سفارش‌ها را بر اساس وضعیت (در انتظار، در حال انجام، بررسی، تکمیل، رد شده) فیلتر کنید و با جستجوی کد رهگیری یا نام مشتری، سفارش مورد نظر را پیدا کنید.' },
+        { title: 'تغییر وضعیت سفارش', desc: 'با کلیک روی آیکون تیک، می‌توانید وضعیت سفارش را تغییر دهید. همچنین از جزئیات سفارش می‌توانید آن را به حالت در حال انجام، تکمیل یا رد شده تغییر دهید.' },
+        { title: 'تخصیص اپراتور', desc: 'از منوی کشویی در هر ردیف، می‌توانید سفارش را به اپراتور مورد نظر تخصیص دهید. این کار باعث می‌شود اپراتور مربوطه اعلان دریافت کند.' },
+        { title: 'مشاهده جزئیات', desc: 'با کلیک روی آیکون چشم، پنجره جزئیات سفارش باز می‌شود که شامل تمام اطلاعات، پیشرفت و امکان تغییر سریع وضعیت است.' },
+      ]
+    },
+    {
+      id: 'users-management',
+      title: 'مدیریت کاربران',
+      icon: Users,
+      color: 'from-purple-500 to-purple-600',
+      description: 'افزودن، ویرایش و مدیریت کاربران و نقش‌ها',
+      steps: [
+        { title: 'مشاهده کاربران', desc: 'لیست تمام کاربران با اطلاعات نام، موبایل، نقش، وضعیت و تاریخ عضویت نمایش داده می‌شود.' },
+        { title: 'افزودن کاربر جدید', desc: 'با کلیک روی دکمه «کاربر جدید»، فرم افزودن کاربر باز می‌شود. نام، شماره موبایل، ایمیل و نقش کاربر را وارد کنید.' },
+        { title: 'ویرایش کاربر', desc: 'با کلیک روی آیکون ویرایش، می‌توانید اطلاعات کاربر را تغییر دهید. نقش کاربر (عادی، اپراتور، مدیر) قابل تغییر است.' },
+        { title: 'تغییر وضعیت', desc: 'با کلیک روی دکمه وضعیت (فعال/غیرفعال)، می‌توانید دسترسی کاربر را فعال یا غیرفعال کنید.' },
+        { title: 'حذف کاربر', desc: 'با کلیک روی آیکون حذف، کاربر از سیستم حذف می‌شود. این عملیات غیرقابل بازگشت است.' },
+        { title: 'مدیریت نقش‌ها', desc: 'سه نقش اصلی تعریف شده: کاربر عادی (فقط ثبت سفارش)، اپراتور (پردازش سفارش‌ها) و مدیر (دسترسی کامل به پنل).' },
+      ]
+    },
+    {
+      id: 'services-management',
+      title: 'مدیریت خدمات',
+      icon: Globe,
+      color: 'from-amber-500 to-amber-600',
+      description: 'افزودن، ویرایش و فعال‌سازی خدمات',
+      steps: [
+        { title: 'مشاهده خدمات', desc: 'تمام خدمات فعال و غیرفعال در قالب کارت نمایش داده می‌شوند. هر کارت شامل آیکون، عنوان، توضیحات، قیمت و وضعیت است.' },
+        { title: 'افزودن خدمت جدید', desc: 'با کلیک روی «خدمت جدید»، فرم افزودن خدمت باز می‌شود. عنوان، توضیحات، دسته‌بندی، آیکون، قیمت و زمان تحویل را وارد کنید.' },
+        { title: 'ویرایش خدمت', desc: 'با کلیک روی آیکون ویرایش، می‌توانید عنوان، توضیحات، قیمت و زمان تحویل خدمت را تغییر دهید.' },
+        { title: 'فعال/غیرفعال کردن', desc: 'با کلیک روی دکمه وضعیت، خدمت را فعال یا غیرفعال کنید. خدمات غیرفعال در لیست خدمات کاربران نمایش داده نمی‌شوند.' },
+        { title: 'حذف خدمت', desc: 'با کلیک روی آیکون حذف، خدمت از سیستم حذف می‌شود. سفارش‌های قبلی این خدمت حفظ می‌شوند.' },
+        { title: 'دسته‌بندی خدمات', desc: 'خدمات در دسته‌بندی‌های دولتی، آموزشی، مالی، حقوقی، چاپ، دیجیتال و ارتباطات سازماندهی شده‌اند.' },
+      ]
+    },
+    {
+      id: 'finance-management',
+      title: 'مدیریت مالی',
+      icon: CreditCard,
+      color: 'from-rose-500 to-rose-600',
+      description: 'مشاهده تراکنش‌ها، تسویه و گزارش‌های مالی',
+      steps: [
+        { title: 'نمای کلی مالی', desc: 'در بالای بخش مالی، چهار شاخص کلیدی شامل درآمد ماهانه، تسویه در انتظار، بازگشت وجه و کمیسیون اپراتورها نمایش داده می‌شود.' },
+        { title: 'لیست تراکنش‌ها', desc: 'تمام تراکنش‌ها شامل شناسه، شرح، نوع (دریافتی/پرداختی/بازگشت)، مبلغ، وضعیت و تاریخ نمایش داده می‌شوند.' },
+        { title: 'تأیید تراکنش', desc: 'تراکنش‌های در انتظار با دکمه «تأیید» قابل تأیید هستند. پس از تأیید، وضعیت به موفق تغییر می‌کند.' },
+        { title: 'تسویه با اپراتورها', desc: 'کمیسیون اپراتورها به صورت خودکار محاسبه و در بخش مالی نمایش داده می‌شود. تسویه می‌تواند دستی یا خودکار باشد.' },
+        { title: 'گزارش‌گیری', desc: 'از بخش تحلیل و گزارش می‌توانید گزارش‌های مالی مفصل شامل درآمد روزانه، ماهانه و سالانه دریافت کنید.' },
+      ]
+    },
+    {
+      id: 'support-management',
+      title: 'مدیریت پشتیبانی',
+      icon: Headphones,
+      color: 'from-cyan-500 to-cyan-600',
+      description: 'پاسخگویی به تیکت‌ها و مدیریت پشتیبانی',
+      steps: [
+        { title: 'مشاهده تیکت‌ها', desc: 'لیست تمام تیکت‌های پشتیبانی با عنوان، کاربر، اولویت و وضعیت نمایش داده می‌شود.' },
+        { title: 'پاسخ به تیکت', desc: 'با کلیک روی هر تیکت، مکالمه آن باز می‌شود. می‌توانید پاسخ خود را تایپ و ارسال کنید.' },
+        { title: 'تغییر وضعیت تیکت', desc: 'از منوی کشویی در بالای مکالمه، می‌توانید وضعیت تیکت را به باز، در حال بررسی، پاسخ داده شده یا بسته تغییر دهید.' },
+        { title: 'اولویت‌بندی', desc: 'تیکت‌ها دارای سه سطح اولویت (بالا، متوسط، کم) هستند. تیکت‌های با اولویت بالا باید سریع‌تر پاسخ داده شوند.' },
+        { title: 'آمار پشتیبانی', desc: 'تعداد تیکت‌های باز، در حال بررسی و بسته شده در بالای بخش پشتیبانی نمایش داده می‌شود.' },
+      ]
+    },
+    {
+      id: 'analytics',
+      title: 'تحلیل و گزارش‌ها',
+      icon: BarChart3,
+      color: 'from-indigo-500 to-indigo-600',
+      description: 'مشاهده نمودارها، آمار و خروجی گزارش',
+      steps: [
+        { title: 'نمودار سفارش‌ها', desc: 'نمودار روند سفارش‌های ۳۰ روز اخیر به صورت ستونی نمایش داده می‌شود.' },
+        { title: 'رضایت مشتریان', desc: 'نمودار دایره‌ای رضایت مشتریان با درصد‌های عالی، خوب، متوسط و ضعیف نمایش داده می‌شود.' },
+        { title: 'عملکرد اپراتورها', desc: 'لیست اپراتورها با تعداد سفارش‌ها، میانگین زمان پاسخ و امتیاز رضایت نمایش داده می‌شود.' },
+        { title: 'سلامت سیستم', desc: 'وضعیت سرورها، دیتابیس، درگاه پرداخت، سرویس پیامک و ذخیره‌سازی با میزان آپ‌تایم نمایش داده می‌شود.' },
+        { title: 'خروجی گزارش', desc: 'گزارش‌های فروش ماهانه، کاربران، سفارش‌ها و مالی قابل دانلود هستند.' },
+      ]
+    },
+    {
+      id: 'settings',
+      title: 'تنظیمات سیستم',
+      icon: Settings,
+      color: 'from-gray-500 to-gray-700',
+      description: 'پیکربندی عمومی، امنیتی و سرویس‌های متصل',
+      steps: [
+        { title: 'تنظیمات عمومی', desc: 'نام پلتفرم، توضیحات، شماره تماس و ایمیل پشتیبانی را می‌توانید در این بخش تغییر دهید.' },
+        { title: 'تنظیمات امنیتی', desc: 'احراز هویت دو مرحله‌ای، رمزنگاری مدارک، لاگ فعالیت‌ها، محدودیت نشست و تشخیص ناهنجاری از تنظیمات امنیتی هستند.' },
+        { title: 'مدیریت شعبه‌ها', desc: 'می‌توانید شعبه‌های مختلف را اضافه، ویرایش یا حذف کنید. هر شعبه دارای آمار سفارش‌های خود است.' },
+        { title: 'سرویس‌های متصل', desc: 'وضعیت اتصال به درگاه پرداخت، سرویس پیامک، API دولت هوشمند، سرویس ایمیل و فضای ابری نمایش داده می‌شود.' },
+        { title: 'تنظیمات اعلان', desc: 'اعلان‌های پیامکی، ایمیلی و درون‌برنامه‌ای را می‌توانید فعال یا غیرفعال کنید.' },
+      ]
+    },
+  ];
+
+  const resourceCategories = [
+    {
+      title: 'سایت‌های دولتی و اداری',
+      icon: Building2,
+      color: 'bg-blue-50 border-blue-200',
+      iconColor: 'text-blue-600',
+      sites: [
+        { name: 'سامانه ثنا (قوه قضاییه)', url: 'https://adliran.ir', desc: 'ثبت‌نام و احراز هویت در سامانه ابلاغ الکترونیک قضایی' },
+        { name: 'سامانه ثبت‌نام آزمون‌های سراسری', url: 'https://sanjesh.org', desc: 'سازمان سنجش آموزش کشور - ثبت‌نام کنکور و آزمون‌ها' },
+        { name: 'سامانه نظام وظیفه', url: 'https://vazifeh.police.ir', desc: 'امور نظام وظیفه عمومی - معافیت تحصیلی و تعیین وضعیت' },
+        { name: 'سامانه پلیس +۱۰', url: 'https://police.ir', desc: 'خدمات گذرنامه، گواهینامه و کارت پایان خدمت' },
+        { name: 'سامانه سازمان امور مالیاتی', url: 'https://tax.gov.ir', desc: 'تشکیل پرونده مالیاتی و ارسال اظهارنامه' },
+        { name: 'سامانه تأمین اجتماعی', url: 'https://tamin.ir', desc: 'خدمات بیمه‌ای و بازنشستگی تأمین اجتماعی' },
+        { name: 'سامانه بیمه سلامت', url: 'https://bimehsalamat.ir', desc: 'بیمه سلامت ایرانیان و خدمات درمانی' },
+        { name: 'سامانه سهام عدالت', url: 'https://sahamedalat.ir', desc: 'مشاهده و مدیریت سهام عدالت' },
+        { name: 'سامانه ثبت احوال', url: 'https://sabteahval.ir', desc: 'خدمات ثبت احوال و صدور شناسنامه' },
+        { name: 'سامانه دولت الکترونیک', url: 'https://iran.gov.ir', desc: 'پنجره ملی خدمات دولت هوشمند' },
+        { name: 'سامانه یارانه و کالابرگ', url: 'https://yaraneh.gov.ir', desc: 'مشاهده وضعیت یارانه و کالابرگ الکترونیک' },
+        { name: 'سامانه املاک و مستغلات', url: 'https://amlak.mrud.ir', desc: 'ثبت و پیگیری املاک و مستغلات' },
+      ]
+    },
+    {
+      title: 'سایت‌های آموزشی و دانشگاهی',
+      icon: GraduationCap,
+      color: 'bg-purple-50 border-purple-200',
+      iconColor: 'text-purple-600',
+      sites: [
+        { name: 'سازمان سنجش آموزش کشور', url: 'https://sanjesh.org', desc: 'ثبت‌نام و نتایج آزمون‌های سراسری، ارشد و دکتری' },
+        { name: 'وزارت علوم، تحقیقات و فناوری', url: 'https://msrt.ir', desc: 'اطلاعات دانشگاه‌ها و امور آموزشی' },
+        { name: 'سامانه آموزش عالی', url: 'https://sanjesh.org', desc: 'ثبت‌نام و انتخاب رشته دانشگاه‌ها' },
+        { name: 'سامانه مرکز سنجش پزشکی', url: 'https://sanjeshp.ir', desc: 'آزمون‌های علوم پزشکی و تخصص' },
+        { name: 'سامانه دانشگاه آزاد', url: 'https://azmoon.org', desc: 'ثبت‌نام و امور آموزشی دانشگاه آزاد' },
+        { name: 'سامانه آموزش و پرورش', url: 'https://medu.ir', desc: 'خدمات آموزش و پرورش و ثبت‌نام مدارس' },
+        { name: 'سامانه پژوهشگاه علوم انسانی', url: 'https://ihcs.ac.ir', desc: 'آزمون‌های تحصیلات تکمیلی علوم انسانی' },
+      ]
+    },
+    {
+      title: 'سایت‌های بیمه و مالی',
+      icon: CreditCard,
+      color: 'bg-emerald-50 border-emerald-200',
+      iconColor: 'text-emerald-600',
+      sites: [
+        { name: 'بیمه مرکزی ایران', url: 'https://centinsu.co.ir', desc: 'سازمان بیمه مرکزی - نظارت بر صنعت بیمه' },
+        { name: 'بیمه ایران', url: 'https://iraninsurance.ir', desc: 'صدور و تمدید بیمه‌نامه‌های شخص ثالث و بدنه' },
+        { name: 'سامانه بیمه‌نامه شخص ثالث', url: 'https://bimeh.com', desc: 'مقایسه و خرید آنلاین بیمه‌نامه' },
+        { name: 'سامانه بیمه دات کام', url: 'https://bime.com', desc: 'خرید آنلاین انواع بیمه‌نامه' },
+        { name: 'فرابورس ایران', url: 'https://ifb.ir', desc: 'اطلاعات بازار فرابورس و سهام' },
+        { name: 'بورس اوراق بهادار تهران', url: 'https://tse.ir', desc: 'اطلاعات بازار بورس و معاملات' },
+        { name: 'سامانه سجام', url: 'https://sejam.ir', desc: 'ثبت‌نام در سامانه جامع اطلاعات مشتریان' },
+      ]
+    },
+    {
+      title: 'درگاه‌های پرداخت',
+      icon: CreditCard,
+      color: 'bg-amber-50 border-amber-200',
+      iconColor: 'text-amber-600',
+      sites: [
+        { name: 'زرین‌پال', url: 'https://zarinpal.com', desc: 'درگاه پرداخت آنلاین - محبوب‌ترین درگاه ایرانی' },
+        { name: 'آیدی‌پی', url: 'https://idpay.ir', desc: 'درگاه پرداخت و خدمات مالی' },
+        { name: 'پی‌پینگ', url: 'https://payping.ir', desc: 'درگاه پرداخت و صدور فاکتور' },
+        { name: 'نکست‌پی', url: 'https://nextpay.ir', desc: 'درگاه پرداخت آنلاین' },
+        { name: 'پی‌آفیس', url: 'https://payoffice.ir', desc: 'درگاه پرداخت و خدمات مالی' },
+        { name: 'سامان کیش', url: 'https://samankish.com', desc: 'درگاه پرداخت بانکی سامان' },
+        { name: 'پارسیان پال', url: 'https://parsianpal.com', desc: 'درگاه پرداخت بانک پارسیان' },
+      ]
+    },
+    {
+      title: 'سرویس‌های پیامک و ارتباطات',
+      icon: Phone,
+      color: 'bg-rose-50 border-rose-200',
+      iconColor: 'text-rose-600',
+      sites: [
+        { name: 'کاوه‌نگار', url: 'https://kavenegar.com', desc: 'سرویس ارسال پیامک و احراز هویت' },
+        { name: 'فراز اس‌ام‌اس', url: 'https://farazsms.com', desc: 'پنل ارسال پیامک انبوه' },
+        { name: 'ملی پیامک', url: 'https://melipayamak.com', desc: 'سرویس پیامک و تماس صوتی' },
+        { name: 'sms.ir', url: 'https://sms.ir', desc: 'سرویس ارسال پیامک حرفه‌ای' },
+        { name: 'مدیاوا', url: 'https://mediawa.com', desc: 'سرویس پیامک و通知' },
+        { name: 'قیطره', url: 'https://ghatreh.com', desc: 'سرویس پیامک و اطلاع‌رسانی' },
+      ]
+    },
+    {
+      title: 'سرویس‌های احراز هویت',
+      icon: Shield,
+      color: 'bg-indigo-50 border-indigo-200',
+      iconColor: 'text-indigo-600',
+      sites: [
+        { name: 'احراز هویت سجام', url: 'https://sejam.ir', desc: 'احراز هویت غیرحضوری برای بازار سرمایه' },
+        { name: 'احراز هویت سیگنال', url: 'https://signal.ir', desc: 'سرویس احراز هویت بیومتریک' },
+        { name: 'احراز هویت ایران', url: 'https://evidencement.ir', desc: 'احراز هویت آنلاین با کارت ملی' },
+        { name: 'نوین‌احراز', url: 'https://novinera.com', desc: 'سرویس احراز هویت و KYC' },
+        { name: 'شاهکار (ثبت احوال)', url: 'https://shahkar.gov.ir', desc: 'سامانه تطبیق اطلاعات هویتی' },
+      ]
+    },
+    {
+      title: 'سرویس‌های ابری و زیرساخت',
+      icon: Server,
+      color: 'bg-cyan-50 border-cyan-200',
+      iconColor: 'text-cyan-600',
+      sites: [
+        { name: 'ابر آروان', url: 'https://arvancloud.ir', desc: 'سرویس ابری، CDN و ذخیره‌سازی' },
+        { name: 'پارس‌پک', url: 'https://parspack.com', desc: 'هاستینگ و سرور ابری' },
+        { name: 'ایران‌سرور', url: 'https://iranserver.com', desc: 'خدمات میزبانی وب و سرور' },
+        { name: 'نت‌افراز', url: 'https://netafraz.com', desc: 'هاستینگ و سرور مجازی' },
+        { name: 'سون‌هاست', url: 'https://sonhost.com', desc: 'هاستینگ اشتراکی و حرفه‌ای' },
+        { name: 'میزبان‌فا', url: 'https://mizbanfa.net', desc: 'هاستینگ و دامنه' },
+      ]
+    },
+    {
+      title: 'ابزارها و منابع مدیریتی',
+      icon: Lightbulb,
+      color: 'bg-orange-50 border-orange-200',
+      iconColor: 'text-orange-600',
+      sites: [
+        { name: 'نمایندگی یابی', url: 'https://namayandegi.com', desc: 'سامانه جستجوی نمایندگی‌های خدماتی' },
+        { name: 'ایسام (سامانه معاملات)', url: 'https://esam.ir', desc: 'سامانه حراج و معاملات آنلاین' },
+        { name: 'دیجی‌سکورو', url: 'https://digisecuro.com', desc: 'امضای دیجیتال و اسناد الکترونیک' },
+        { name: 'سامانه ثبت شرکت‌ها', url: 'https://irsherkat.ssaa.ir', desc: 'ثبت و تغییرات شرکت‌ها' },
+        { name: 'سامانه تجارت', url: 'https://ntsw.ir', desc: 'سامانه جامع تجارت - واردات و صادرات' },
+        { name: 'اتاق بازرگانی', url: 'https://ccima.ir', desc: 'اتاق بازرگانی، صنایع، معادن و کشاورزی' },
+      ]
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <GraduationCap size={24} className="text-primary-600" />
+            آموزش ادمین
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">راهنمای جامع استفاده از پنل مدیریت و منابع مفید</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 bg-white rounded-xl border border-gray-100 p-1">
+        <button
+          onClick={() => setActiveTab('tutorials')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+            activeTab === 'tutorials' ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <BookOpen size={16} />
+          آموزش‌های پنل
+        </button>
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+            activeTab === 'resources' ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'
+          }`}
+        >
+          <Link2 size={16} />
+          منابع و سایت‌های مفید
+        </button>
+      </div>
+
+      {/* Tutorials Tab */}
+      {activeTab === 'tutorials' && (
+        <div className="space-y-4">
+          {/* Quick Start Banner */}
+          <div className="bg-gradient-to-bl from-primary-600 to-primary-800 rounded-2xl p-6 text-white">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <Lightbulb size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-1">به پنل مدیریت کافی‌نت ابری خوش آمدید!</h3>
+                <p className="text-primary-100 text-sm leading-6">
+                  این بخش شامل آموزش‌های کامل برای تسلط بر تمام بخش‌های پنل مدیریت است. 
+                  هر بخش شامل مراحل گام‌به‌گام با توضیحات دقیق است.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Tutorial Cards */}
+          <div className="grid gap-4">
+            {tutorials.map((tutorial) => {
+              const isExpanded = expandedGuide === tutorial.id;
+              return (
+                <div key={tutorial.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setExpandedGuide(isExpanded ? null : tutorial.id)}
+                    className="w-full p-5 flex items-center gap-4 text-right hover:bg-gray-50 transition"
+                  >
+                    <div className={`w-12 h-12 bg-gradient-to-br ${tutorial.color} rounded-xl flex items-center justify-center shrink-0`}>
+                      <tutorial.icon size={22} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800">{tutorial.title}</h3>
+                      <p className="text-sm text-gray-500 mt-0.5">{tutorial.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{tutorial.steps.length} مرحله</span>
+                      <ChevronDown size={18} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="px-5 pb-5 border-t border-gray-100">
+                      <div className="pt-4 space-y-4">
+                        {tutorial.steps.map((step, i) => (
+                          <div key={i} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
+                                <span className="text-sm font-bold text-primary-700">{i + 1}</span>
+                              </div>
+                              {i < tutorial.steps.length - 1 && (
+                                <div className="w-0.5 h-full bg-gray-200 mt-1"></div>
+                              )}
+                            </div>
+                            <div className="flex-1 pb-4">
+                              <h4 className="font-semibold text-gray-800 text-sm">{step.title}</h4>
+                              <p className="text-sm text-gray-600 mt-1 leading-6">{step.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Tips Section */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+            <h3 className="font-bold text-amber-800 flex items-center gap-2 mb-3">
+              <Lightbulb size={18} />
+              نکات کلیدی برای مدیران
+            </h3>
+            <ul className="space-y-2 text-sm text-amber-700">
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>هر روز داشبورد را بررسی کنید تا از وضعیت سفارش‌ها و درآمد مطلع شوید.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>سفارش‌های با اولویت بالا را در اسرع وقت به اپراتورها تخصیص دهید.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>تیکت‌های پشتیبانی را حداکثر ظرف ۲ ساعت پاسخ دهید.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>تنظیمات امنیتی را همیشه فعال نگه دارید و لاگ‌ها را بررسی کنید.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>گزارش‌های هفتگی و ماهانه را برای تحلیل عملکرد مطالعه کنید.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle size={14} className="mt-0.5 shrink-0" />
+                <span>سرویس‌های متصل را به صورت دوره‌ای بررسی و در صورت نیاز بروزرسانی کنید.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Resources Tab */}
+      {activeTab === 'resources' && (
+        <div className="space-y-4">
+          {/* Resources Banner */}
+          <div className="bg-gradient-to-bl from-emerald-600 to-emerald-800 rounded-2xl p-6 text-white">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <Bookmark size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-1">منابع و سایت‌های ضروری</h3>
+                <p className="text-emerald-100 text-sm leading-6">
+                  لیست کامل سایت‌ها و منابعی که هر مدیر کافی‌نت آنلاین باید بداند و از آن‌ها استفاده کند.
+                  این لیست شامل سایت‌های دولتی، آموزشی، مالی، پرداخت، پیامک و زیرساختی است.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Resource Categories */}
+          <div className="space-y-4">
+            {resourceCategories.map((category, idx) => (
+              <div key={idx} className={`rounded-2xl border ${category.color} overflow-hidden`}>
+                <div className="p-4 flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${category.color.replace('bg-', 'bg-').replace('50', '100')}`}>
+                    <category.icon size={20} className={category.iconColor} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800">{category.title}</h3>
+                    <p className="text-xs text-gray-500">{category.sites.length} سایت</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-b-2xl">
+                  <div className="divide-y divide-gray-50">
+                    {category.sites.map((site, i) => (
+                      <a
+                        key={i}
+                        href={site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 hover:bg-gray-50 transition group"
+                      >
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary-50 transition">
+                          <Globe size={14} className="text-gray-500 group-hover:text-primary-600 transition" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-gray-800 text-sm">{site.name}</h4>
+                            <ExternalLink size={12} className="text-gray-400 shrink-0" />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{site.desc}</p>
+                          <p className="text-xs text-primary-600 mt-0.5 font-mono truncate">{site.url}</p>
+                        </div>
+                        <ChevronLeft size={16} className="text-gray-300 group-hover:text-primary-500 transition shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
+              <p className="text-2xl font-bold text-primary-600">{resourceCategories.reduce((acc, cat) => acc + cat.sites.length, 0)}</p>
+              <p className="text-xs text-gray-500 mt-1">سایت مفید</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{resourceCategories.length}</p>
+              <p className="text-xs text-gray-500 mt-1">دسته‌بندی</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
+              <p className="text-2xl font-bold text-purple-600">{tutorials.length}</p>
+              <p className="text-xs text-gray-500 mt-1">آموزش</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
+              <p className="text-2xl font-bold text-amber-600">{tutorials.reduce((acc, t) => acc + t.steps.length, 0)}</p>
+              <p className="text-xs text-gray-500 mt-1">مرحله آموزشی</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
