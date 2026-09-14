@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { services } from '../data/services';
 import { getServiceIcon } from '../components/Icons';
-import { Upload, ArrowRight, CheckCircle, FileText, CreditCard, Clock, Shield, XCircle } from 'lucide-react';
+import { Upload, ArrowRight, CheckCircle, FileText, CreditCard, Clock, Shield, XCircle, File, X, Eye } from 'lucide-react';
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+  uploadDate: string;
+}
 
 export default function OrderForm() {
   const { id } = useParams();
   const service = services.find(s => s.id === id);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<Record<string, string>>({});
-  const [files, setFiles] = useState<Record<string, string>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({});
   const [submitted, setSubmitted] = useState(false);
   const [trackingCode] = useState(`KNT-${Math.floor(Math.random() * 900000 + 100000)}`);
+  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   if (!service) {
     return (
@@ -27,11 +37,67 @@ export default function OrderForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileUpload = (name: string, fileName: string) => {
-    setFiles(prev => ({ ...prev, [name]: fileName }));
+  const handleFileUpload = (fieldName: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const uploadedFile: UploadedFile = {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        dataUrl: dataUrl,
+        uploadDate: new Date().toLocaleDateString('fa-IR'),
+      };
+      setUploadedFiles(prev => ({ ...prev, [fieldName]: uploadedFile }));
+      
+      // Save to localStorage for admin to access
+      const orderFilesKey = `order_${trackingCode}_files`;
+      const existingFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
+      existingFiles[fieldName] = uploadedFile;
+      localStorage.setItem(orderFilesKey, JSON.stringify(existingFiles));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileClick = (fieldName: string) => {
+    fileInputRefs.current[fieldName]?.click();
+  };
+
+  const handleFileChange = (fieldName: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(fieldName, file);
+    }
+  };
+
+  const removeFile = (fieldName: string) => {
+    setUploadedFiles(prev => {
+      const newFiles = { ...prev };
+      delete newFiles[fieldName];
+      return newFiles;
+    });
+    const orderFilesKey = `order_${trackingCode}_files`;
+    const existingFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
+    delete existingFiles[fieldName];
+    localStorage.setItem(orderFilesKey, JSON.stringify(existingFiles));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const handleSubmit = () => {
+    // Save order info to localStorage
+    const orderInfo = {
+      trackingCode,
+      serviceId: service.id,
+      serviceTitle: service.title,
+      formData,
+      submittedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(`order_${trackingCode}_info`, JSON.stringify(orderInfo));
     setSubmitted(true);
   };
 
@@ -190,22 +256,52 @@ export default function OrderForm() {
                   {field.label}
                   {field.required && <span className="text-rose-500 mr-1">*</span>}
                 </label>
+                <input
+                  type="file"
+                  ref={(el) => { fileInputRefs.current[field.name] = el; }}
+                  onChange={(e) => handleFileChange(field.name, e)}
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
                 <div
-                  onClick={() => handleFileUpload(field.name, `${field.label}_uploaded.pdf`)}
+                  onClick={() => handleFileClick(field.name)}
                   className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${
-                    files[field.name] ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                    uploadedFiles[field.name] ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
                   }`}
                 >
-                  {files[field.name] ? (
-                    <div className="flex items-center justify-center gap-2 text-emerald-700">
-                      <CheckCircle size={20} />
-                      <span className="text-sm font-medium">{files[field.name]}</span>
+                  {uploadedFiles[field.name] ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2 text-emerald-700">
+                        <CheckCircle size={20} />
+                        <span className="text-sm font-medium">{uploadedFiles[field.name].name}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+                        <span>{formatFileSize(uploadedFiles[field.name].size)}</span>
+                        <span>•</span>
+                        <span>{uploadedFiles[field.name].uploadDate}</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setPreviewFile(uploadedFiles[field.name]); }}
+                          className="px-3 py-1 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+                        >
+                          <Eye size={12} />
+                          پیش‌نمایش
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeFile(field.name); }}
+                          className="px-3 py-1 bg-white border border-rose-200 rounded-lg text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-1"
+                        >
+                          <X size={12} />
+                          حذف
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>
                       <Upload size={24} className="mx-auto text-gray-400 mb-2" />
                       <p className="text-sm text-gray-500">فایل را بکشید و رها کنید یا کلیک کنید</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG — حداکثر ۱۰ مگابایت</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, DOC — حداکثر ۱۰ مگابایت</p>
                     </>
                   )}
                 </div>
@@ -300,6 +396,36 @@ export default function OrderForm() {
           </div>
         )}
       </div>
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <File size={18} className="text-primary-600" />
+                <h3 className="font-bold text-gray-800">{previewFile.name}</h3>
+              </div>
+              <button onClick={() => setPreviewFile(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[70vh]">
+              {previewFile.type.startsWith('image/') ? (
+                <img src={previewFile.dataUrl} alt={previewFile.name} className="max-w-full mx-auto rounded-lg" />
+              ) : previewFile.type === 'application/pdf' ? (
+                <iframe src={previewFile.dataUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" title={previewFile.name} />
+              ) : (
+                <div className="text-center py-12">
+                  <File size={48} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">پیش‌نمایش این نوع فایل پشتیبانی نمی‌شود</p>
+                  <p className="text-xs text-gray-400 mt-2">{previewFile.name} • {formatFileSize(previewFile.size)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

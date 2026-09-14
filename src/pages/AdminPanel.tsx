@@ -10,7 +10,8 @@ import {
   Download, Filter, Send, ArrowLeft, Building2, Globe, Lock, Mail,
   Phone, Wifi, Database, Server, Zap, BookOpen, GraduationCap, ExternalLink,
   PlayCircle, Video, HelpCircle, Lightbulb, Bookmark, Link2, ChevronLeft,
-  Monitor, MousePointer, KeyRound, FileCheck, ClipboardList, Headphones
+  Monitor, MousePointer, KeyRound, FileCheck, ClipboardList, Headphones,
+  FileIcon, Paperclip
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -242,6 +243,156 @@ function DashboardView({ orders, users }: { orders: Order[]; users: AppUser[] })
   );
 }
 
+/* ============ ORDER DETAIL MODAL ============ */
+function OrderDetailModal({ order, onClose, updateOrderStatus }: { 
+  order: Order; 
+  onClose: () => void;
+  updateOrderStatus: (id: string, status: Order['status']) => void;
+}) {
+  const [previewFile, setPreviewFile] = useState<any>(null);
+  
+  // Load files from localStorage
+  const orderFilesKey = `order_${order.trackingCode}_files`;
+  const uploadedFiles = JSON.parse(localStorage.getItem(orderFilesKey) || '{}');
+  const filesArray = Object.entries(uploadedFiles) as [string, any][];
+
+  // Load form data
+  const orderInfoKey = `order_${order.trackingCode}_info`;
+  const orderInfo = JSON.parse(localStorage.getItem(orderInfoKey) || '{}');
+  const formData = orderInfo.formData || {};
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  return (
+    <Modal onClose={onClose} title="جزئیات سفارش">
+      <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+        {/* Basic Info */}
+        <div className="grid grid-cols-2 gap-4">
+          <div><p className="text-xs text-gray-500">کد رهگیری</p><p className="font-mono font-bold text-primary-700">{order.trackingCode}</p></div>
+          <div><p className="text-xs text-gray-500">خدمت</p><p className="font-medium">{order.serviceTitle}</p></div>
+          <div><p className="text-xs text-gray-500">مشتری</p><p className="font-medium">{order.customerName}</p></div>
+          <div><p className="text-xs text-gray-500">مبلغ</p><p className="font-bold">{order.price}</p></div>
+          <div><p className="text-xs text-gray-500">تاریخ</p><p className="font-medium">{order.date}</p></div>
+          <div><p className="text-xs text-gray-500">اپراتور</p><p className="font-medium">{order.operator || 'تخصیص نیافته'}</p></div>
+        </div>
+
+        {/* Progress */}
+        <div>
+          <p className="text-xs text-gray-500 mb-2">پیشرفت</p>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-primary-500 rounded-full" style={{ width: `${order.progress}%` }}></div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">{order.progress}٪</p>
+        </div>
+
+        {/* Form Data */}
+        {Object.keys(formData).length > 0 && (
+          <div className="bg-gray-50 rounded-xl p-4">
+            <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <FileText size={16} className="text-primary-600" />
+              اطلاعات فرم
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(formData).map(([key, value]) => (
+                <div key={key}>
+                  <p className="text-xs text-gray-500">{key}</p>
+                  <p className="text-sm font-medium text-gray-800">{String(value)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Uploaded Files */}
+        {filesArray.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2">
+              <Paperclip size={16} />
+              مدارک آپلود شده ({filesArray.length} فایل)
+            </h4>
+            <div className="space-y-2">
+              {filesArray.map(([fieldName, file]: [string, any]) => (
+                <div key={fieldName} className="bg-white rounded-lg p-3 border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        {file.type?.startsWith('image/') ? (
+                          <img src={file.dataUrl} alt={file.name} className="w-6 h-6 object-cover rounded" />
+                        ) : (
+                          <FileIcon size={14} className="text-blue-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{file.name}</p>
+                        <p className="text-xs text-gray-500">{formatFileSize(file.size)} • {file.uploadDate}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setPreviewFile(file)}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200 flex items-center gap-1"
+                    >
+                      <Eye size={12} />
+                      مشاهده
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filesArray.length === 0 && (
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <FileIcon size={24} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-sm text-gray-500">فایلی آپلود نشده است</p>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-4 border-t border-gray-100">
+          <button onClick={() => { updateOrderStatus(order.id, 'processing'); onClose(); }} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">تغییر به: در حال انجام</button>
+          <button onClick={() => { updateOrderStatus(order.id, 'completed'); onClose(); }} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">تکمیل سفارش</button>
+          <button onClick={() => { updateOrderStatus(order.id, 'rejected'); onClose(); }} className="flex-1 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700">رد سفارش</button>
+        </div>
+      </div>
+
+      {/* File Preview */}
+      {previewFile && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <FileIcon size={18} className="text-primary-600" />
+                <h3 className="font-bold text-gray-800">{previewFile.name}</h3>
+              </div>
+              <button onClick={() => setPreviewFile(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[70vh]">
+              {previewFile.type?.startsWith('image/') ? (
+                <img src={previewFile.dataUrl} alt={previewFile.name} className="max-w-full mx-auto rounded-lg" />
+              ) : previewFile.type === 'application/pdf' ? (
+                <iframe src={previewFile.dataUrl} className="w-full h-[60vh] rounded-lg border border-gray-200" title={previewFile.name} />
+              ) : (
+                <div className="text-center py-12">
+                  <FileIcon size={48} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">پیش‌نمایش این نوع فایل پشتیبانی نمی‌شود</p>
+                  <p className="text-xs text-gray-400 mt-2">{previewFile.name} • {formatFileSize(previewFile.size)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /* ============ ORDERS ============ */
 function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrders: React.Dispatch<React.SetStateAction<Order[]>>; showToast: (m: string, t?: any) => void }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -333,30 +484,11 @@ function OrdersView({ orders, setOrders, showToast }: { orders: Order[]; setOrde
 
       {/* Order Detail Modal */}
       {showDetail && selectedOrder && (
-        <Modal onClose={() => setShowDetail(false)} title="جزئیات سفارش">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-gray-500">کد رهگیری</p><p className="font-mono font-bold text-primary-700">{selectedOrder.trackingCode}</p></div>
-              <div><p className="text-xs text-gray-500">خدمت</p><p className="font-medium">{selectedOrder.serviceTitle}</p></div>
-              <div><p className="text-xs text-gray-500">مشتری</p><p className="font-medium">{selectedOrder.customerName}</p></div>
-              <div><p className="text-xs text-gray-500">مبلغ</p><p className="font-bold">{selectedOrder.price}</p></div>
-              <div><p className="text-xs text-gray-500">تاریخ</p><p className="font-medium">{selectedOrder.date}</p></div>
-              <div><p className="text-xs text-gray-500">اپراتور</p><p className="font-medium">{selectedOrder.operator || 'تخصیص نیافته'}</p></div>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-2">پیشرفت</p>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-primary-500 rounded-full" style={{ width: `${selectedOrder.progress}%` }}></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{selectedOrder.progress}٪</p>
-            </div>
-            <div className="flex gap-2 pt-4 border-t border-gray-100">
-              <button onClick={() => { updateOrderStatus(selectedOrder.id, 'processing'); setShowDetail(false); }} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">تغییر به: در حال انجام</button>
-              <button onClick={() => { updateOrderStatus(selectedOrder.id, 'completed'); setShowDetail(false); }} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">تکمیل سفارش</button>
-              <button onClick={() => { updateOrderStatus(selectedOrder.id, 'rejected'); setShowDetail(false); }} className="flex-1 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700">رد سفارش</button>
-            </div>
-          </div>
-        </Modal>
+        <OrderDetailModal 
+          order={selectedOrder} 
+          onClose={() => setShowDetail(false)}
+          updateOrderStatus={updateOrderStatus}
+        />
       )}
     </div>
   );
@@ -1893,82 +2025,108 @@ function TrainingView({ services }: { services: Service[] }) {
                     {isExpanded && (
                       <div className="border-t border-gray-100 bg-gray-50">
                         <div className="p-5">
-                          {/* Training Content */}
-                          <div className="grid md:grid-cols-2 gap-5">
-                            {/* Left: Illustration */}
-                            <div className="bg-white rounded-xl p-6 border border-gray-200">
-                              <div className="aspect-video bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg flex items-center justify-center mb-4">
-                                <div className="text-center">
-                                  <SIcon size={64} className="text-primary-400 mx-auto mb-2" />
-                                  <p className="text-xs text-primary-600 font-medium">تصویر آموزشی</p>
-                                </div>
+                          {/* Service Info Header */}
+                          <div className="bg-white rounded-xl p-4 border border-gray-200 mb-5">
+                            <div className="flex items-start gap-4">
+                              <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center shrink-0">
+                                <SIcon size={28} className="text-primary-600" />
                               </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                  <Clock size={14} className="text-gray-400" />
-                                  <span>زمان تقریبی: {service.duration}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                  <CreditCard size={14} className="text-gray-400" />
-                                  <span>هزینه: {service.price}</span>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-gray-800 text-lg">{service.title}</h3>
+                                <p className="text-sm text-gray-600 mt-1 leading-6">{service.description}</p>
+                                <div className="flex flex-wrap items-center gap-4 mt-3">
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
+                                    <Clock size={12} className="text-gray-500" />
+                                    <span>زمان: {service.duration}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg">
+                                    <CreditCard size={12} className="text-gray-500" />
+                                    <span>هزینه: {service.price}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
+                          </div>
 
-                            {/* Right: Steps */}
-                            <div className="space-y-3">
-                              <h4 className="font-bold text-gray-800 flex items-center gap-2">
-                                <ClipboardList size={18} className="text-primary-600" />
-                                مراحل انجام خدمت
-                              </h4>
-                              <div className="space-y-2">
-                                {getServiceSteps(service.id).map((step, i) => (
-                                  <div key={i} className="flex gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                                    <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
-                                      <span className="text-xs font-bold text-primary-700">{i + 1}</span>
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="text-sm font-medium text-gray-800">{step.title}</p>
-                                      <p className="text-xs text-gray-600 mt-0.5 leading-5">{step.desc}</p>
-                                    </div>
+                          {/* Steps */}
+                          <div className="space-y-3 mb-5">
+                            <h4 className="font-bold text-gray-800 flex items-center gap-2">
+                              <ClipboardList size={18} className="text-primary-600" />
+                              مراحل انجام خدمت
+                            </h4>
+                            <div className="space-y-2">
+                              {getServiceSteps(service.id).map((step, i) => (
+                                <div key={i} className="flex gap-3 bg-white rounded-lg p-3 border border-gray-200">
+                                  <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center shrink-0">
+                                    <span className="text-xs font-bold text-primary-700">{i + 1}</span>
                                   </div>
-                                ))}
-                              </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-800">{step.title}</p>
+                                    <p className="text-xs text-gray-600 mt-0.5 leading-5">{step.desc}</p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
 
                           {/* Required Documents */}
                           {getServiceDocuments(service.id).length > 0 && (
-                            <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                              <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-2">
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                              <h4 className="font-bold text-amber-800 flex items-center gap-2 mb-3">
                                 <FileText size={16} />
                                 مدارک مورد نیاز
                               </h4>
-                              <ul className="space-y-1">
+                              <div className="grid sm:grid-cols-2 gap-2">
                                 {getServiceDocuments(service.id).map((doc, i) => (
-                                  <li key={i} className="flex items-start gap-2 text-sm text-amber-700">
-                                    <CheckCircle size={14} className="mt-0.5 shrink-0" />
-                                    <span>{doc}</span>
-                                  </li>
+                                  <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-amber-100">
+                                    <CheckCircle size={14} className="mt-0.5 shrink-0 text-amber-600" />
+                                    <span className="text-sm text-amber-800">{doc}</span>
+                                  </div>
                                 ))}
-                              </ul>
+                              </div>
                             </div>
                           )}
 
                           {/* Important Notes */}
-                          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
-                            <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-2">
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                            <h4 className="font-bold text-blue-800 flex items-center gap-2 mb-3">
                               <AlertCircle size={16} />
-                              نکات مهم
+                              نکات مهم و کلیدی
                             </h4>
-                            <ul className="space-y-1">
+                            <div className="space-y-2">
                               {getServiceNotes(service.id).map((note, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-blue-700">
-                                  <CheckCircle size={14} className="mt-0.5 shrink-0" />
-                                  <span>{note}</span>
-                                </li>
+                                <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-2.5 border border-blue-100">
+                                  <CheckCircle size={14} className="mt-0.5 shrink-0 text-blue-600" />
+                                  <span className="text-sm text-blue-800">{note}</span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
+                          </div>
+
+                          {/* Additional Tips */}
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                            <h4 className="font-bold text-emerald-800 flex items-center gap-2 mb-3">
+                              <Lightbulb size={16} />
+                              نکات تکمیلی برای اپراتور
+                            </h4>
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-700 mb-1">قبل از شروع</p>
+                                <p className="text-xs text-emerald-600 leading-5">اطلاعات کاربر را کامل دریافت کنید و مدارک را بررسی نمایید</p>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-700 mb-1">حین انجام</p>
+                                <p className="text-xs text-emerald-600 leading-5">دقت کنید اطلاعات وارد شده با مدارک مطابقت داشته باشد</p>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-700 mb-1">پس از اتمام</p>
+                                <p className="text-xs text-emerald-600 leading-5">کد پیگیری و رسید را به کاربر ارائه دهید</p>
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-700 mb-1">در صورت مشکل</p>
+                                <p className="text-xs text-emerald-600 leading-5">با پشتیبانی فنی تماس بگیرید و مشکل را گزارش دهید</p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
